@@ -5,6 +5,7 @@
 #include <map>
 #include "oaDesignDB.h"
 #include "PAutils.h"
+#include "ProjectInputRules.h"
 
 using namespace std;
 using namespace oa; 
@@ -12,12 +13,15 @@ using namespace oa;
 class pinAssigner
 {
 public:
-	pinAssigner(oaBlock* topblock);
+	pinAssigner(oaBlock* topblock, ProjectInputRules rules);
 	virtual ~pinAssigner();
 	void printPinAssignment();
 private:
 	PAsolution solution;
 	oaNativeNS ns;
+	int pinMoveStep;
+	int minPinPitch;
+	int maxPinPerturbation;
 };
 
 #endif

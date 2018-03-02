@@ -3,8 +3,11 @@
 #include <iostream>
 using namespace std;
 
-pinAssigner::pinAssigner(oaBlock* topblock)
+pinAssigner::pinAssigner(oaBlock* topblock, ProjectInputRules rules)
 {
+	pinMoveStep = (int)(rules.getPinMoveStep() * 2000);
+	minPinPitch = (int)(rules.getMinPinPitch() * 2000);
+	maxPinPerturbation = (int)(rules.getMaxPinPerturbation() * 2000);
 	oaNativeNS _ns;
 	ns = _ns;
 	oaIter<oaInst> instIter(topblock->getInsts());

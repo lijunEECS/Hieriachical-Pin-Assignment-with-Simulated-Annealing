@@ -69,43 +69,10 @@ int main(int argc, char *argv[])
 	oaString netName, instName, masterCellName, assocTermName, termName;
 #define test true
 #if test
-	pinAssigner Assigner(block);
+	pinAssigner Assigner(block, inputRules);
 	Assigner.printPinAssignment();
 #else
-	
-	oaIter<oaNet> netIterator(block->getNets());
-	while (oaNet* net = netIterator.getNext()) {
-		net->getName(ns, netName);
-		oaIter<oaInstTerm> instTermIterator(net->getInstTerms());
-		oaIter<oaTerm> termIterator(net->getTerms());
-		
-		//InstTerms
-		while (oaInstTerm* instTerm = instTermIterator.getNext()) {
-			instTerm->getTermName(ns, assocTermName);
-			oaPoint instTermPos = OAHelper::GetAbsoluteInstTermPosition(instTerm);
 
-			oaInst* inst = instTerm->getInst();
-			inst->getName(ns, instName);
-			inst->getCellName(ns, masterCellName);
-
-			// Use either of the 2 functions below to move macro pins
-			// Both samples move the instTerm 100 DBUs in the x direction on the global design
-			
-			// 1. Move pin to new absolute coordinate on the global design
-			//oaPoint newPos = oaPoint(instTermPos.x()+100, instTermPos.y());
-			//OAHelper::MovePinToPosition(instTerm, newPos);
-			// 2. Move pin by offset according to the global design coordinate system
-			//oaPoint offset = oaPoint(100,0);
-			//OAHelper::MovePinByOffset(instTerm, offset);
-		}
-
-		//Terms
-		while (oaTerm* term = termIterator.getNext()) {
-			term->getName(ns,termName);
-			oaPoint termPos = OAHelper::GetTermPosition(term);
-		}
-	}
-	
 	//=====================================================================
 #endif
 	//=====================================================================
