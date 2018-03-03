@@ -15,7 +15,7 @@ using namespace oa;
 using namespace std;
 
 static oaNativeNS ns;
-123
+
 /*
  * 
  */
@@ -89,8 +89,5 @@ int main(int argc, char *argv[])
 		lib->close();
 
     cout << endl << "\nDone!" << endl;
-    return 0;
-}
-Done!" << endl;
     return 0;
 }
