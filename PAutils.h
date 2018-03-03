@@ -2,6 +2,10 @@
 #define PAUTILS_H
 
 #include <string>
+#include <time.h>
+#include <sstream>
+#include <cmath>
+#include <algorithm>
 #include "oaDesignDB.h"
 using namespace std;
 using namespace oa;
@@ -22,7 +26,16 @@ bool operator == (const macroPin& _l, const macroPin& _r);
 
 oaString getMacroName(oaInst* inst);
 
+macroPin getMacroPin(oaInstTerm* instTerm);
+
 int getHPWL(oaNet* net);
 
+oaBox GetAbsoluteInstTermBBox(oaInst* inst, oaPin* pin);
+
+bool isExternalPin(oaInstTerm* instTerm);
+
+bool adjacent(oaBox& box1, oaBox& box2);
+
+void printDataForMatlab(oaBlock* topBlock, const char* filename);
 
 #endif

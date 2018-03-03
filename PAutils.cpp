@@ -31,6 +31,17 @@ oaString getMacroName(oaInst* inst) {
 	return macroName;
 }
 
+macroPin getMacroPin(oaInstTerm* instTerm)
+{
+	oaNativeNS ns;
+	oaInst* inst = instTerm->getInst();
+	oaString macroName = getMacroName(inst);
+	oaString instTermName;
+	instTerm->getTermName(ns, instTermName);
+	return macroPin(macroName, instTermName);
+	
+}
+
 int getHPWL(oaNet* net) {
 	int termNum = (net->getTerms()).getCount();
 	int instTermNum = (net->getInstTerms()).getCount();
@@ -72,4 +83,92 @@ int getHPWL(oaNet* net) {
 	}
 	int tempHPWL = maxX - minX + maxY - minY;
 	return tempHPWL;
+}
+
+oaBox GetAbsolutePinBBox(oaInst* inst, oaPin* pin)
+{
+	oaIter<oaPinFig> pinFigIter(pin->getFigs());
+	oaPinFig* pinFig = pinFigIter.getNext();
+	oaBox bbox;
+	pinFig->getBBox(bbox);
+	oaPoint instOrigin;
+	inst->getOrigin(instOrigin);
+	oaOrient orient = inst->getOrient();
+
+	//Rotate relative position by orient
+	oaTransform trans = oaTransform(instOrigin, orient);
+	bbox.transform(trans);
+
+	return bbox;
+}
+
+bool adjacent(oaBox& box1, oaBox& box2) 
+{
+	if (box1.left() == box2.left())
+		return true;
+	if (box1.left() == box2.right())
+		return true;
+	if (box1.right() == box2.left())
+		return true;
+	if (box1.right() == box2.right())
+		return true;
+	if (box1.top() == box2.top())
+		return true;
+	if (box1.top() == box2.bottom())
+		return true;
+	if (box1.bottom() == box2.top())
+		return true;
+	if (box1.bottom() == box2.bottom())
+		return true;
+	return false;
+}
+
+bool isExternalPin(oaInstTerm* instTerm)
+{
+	oaInst* inst = instTerm->getInst();
+	oaBox instBBox;
+	inst->getBBox(instBBox);
+	oaTerm* assocTerm = instTerm->getTerm();
+	oaIter<oaPin> pinIter(assocTerm->getPins());
+	oaPin* pin = pinIter.getNext();
+	oaBox pinBBox = GetAbsolutePinBBox(inst, pin);;
+	return adjacent(instBBox, pinBBox);
+}
+
+void printDataForMatlab(oaBlock* topBlock, const char* filename)
+{
+	int left = INT_MAX;
+	int right = INT_MIN;
+	int top = INT_MIN;
+	int bottom = INT_MAX;
+
+	fstream out(filename, ios::out);
+	oaIter<oaInst> instIter(topBlock->getInsts());
+	while (oaInst* inst = instIter.getNext()) {
+		oaBox BBox;
+		inst->getBBox(BBox);
+
+		if (BBox.left() < left) { left = BBox.left(); }
+		if (BBox.right() > right) { right = BBox.right(); }
+		if (BBox.top() > top) { top = BBox.top(); }
+		if (BBox.bottom() < bottom) { bottom = BBox.bottom(); }
+		
+		out << BBox.left() << ',' << BBox.right() << ',' << BBox.top() << ',' << BBox.bottom() << ',' << 1 << endl;
+		
+		oaIter<oaInstTerm> instTermIter(inst->getInstTerms());
+		while (oaInstTerm* instTerm = instTermIter.getNext()) {
+			if (!isExternalPin(instTerm)) continue;
+			oaTerm* assocTerm = instTerm->getTerm();
+			oaTermType termType = assocTerm->getTermType();
+			oaString termTypeName = termType.getName();
+			oaIter<oaPin> pinIter(assocTerm->getPins());
+			while (oaPin* pin = pinIter.getNext()) {
+				BBox = GetAbsolutePinBBox(inst, pin);
+				out << BBox.left() << ',' << BBox.right() << ',' << BBox.top() << ',' << BBox.bottom() << ',' << 2 << endl;
+			}
+
+		}
+	}
+	out << left << ',' << right << ',' << top << ',' << bottom << ',' << 0 << endl;
+	out.close();
 }

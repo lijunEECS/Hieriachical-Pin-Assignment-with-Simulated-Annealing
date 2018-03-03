@@ -18,6 +18,7 @@ public:
 	void printPinAssignment();
 private:
 	PAsolution solution;
+	PAsolution originalPA;
 	oaNativeNS ns;
 	int pinMoveStep;
 	int minPinPitch;

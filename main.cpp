@@ -69,8 +69,7 @@ int main(int argc, char *argv[])
 	oaString netName, instName, masterCellName, assocTermName, termName;
 #define test true
 #if test
-	pinAssigner Assigner(block, inputRules);
-	Assigner.printPinAssignment();
+	printDataForMatlab(block, "PAdata.txt");
 #else
 
 	//=====================================================================
@@ -90,5 +89,8 @@ int main(int argc, char *argv[])
 		lib->close();
 
     cout << endl << "\nDone!" << endl;
+    return 0;
+}
+Done!" << endl;
     return 0;
 }

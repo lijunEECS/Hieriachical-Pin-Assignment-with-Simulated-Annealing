@@ -15,9 +15,8 @@ pinAssigner::pinAssigner(oaBlock* topblock, ProjectInputRules rules)
 		oaString macroName = getMacroName(inst);
 		oaIter<oaInstTerm> instTermIter(inst->getInstTerms());
 		while (oaInstTerm* instTerm = instTermIter.getNext()) {
-			oaString instTermName;
-			instTerm->getTermName(ns, instTermName);
-			macroPin newPin(macroName, instTermName);
+			if (!isExternalPin(instTerm)) continue;
+			macroPin newPin = getMacroPin(instTerm);
 			oaTerm* assocTerm = instTerm->getTerm();
 			oaPoint relativePos = OAHelper::GetTermPosition(assocTerm);
 			if (solution.find(newPin) != solution.end()) {
@@ -25,6 +24,7 @@ pinAssigner::pinAssigner(oaBlock* topblock, ProjectInputRules rules)
 			}
 			else {
 				solution[newPin] = relativePos;
+				originalPA[newPin] = relativePos;
 			}
 		}
 	}
@@ -37,8 +37,14 @@ pinAssigner::~pinAssigner()
 void pinAssigner::printPinAssignment()
 {
 	cout << "=============================================" << endl;
-	cout << "Pin assignment solution:" << endl;
+	cout << "Original pin assignment:" << endl;
+	for (solutionIter it = originalPA.begin(); it != originalPA.end(); it++) {
+		cout << it->first.macroName << ", " << it->first.instTermName << ", " << it->second.x() << ", " << it->second.y() << endl;
+	}
+
+	cout << "=============================================" << endl;
+	cout << "Improved pin assignment:" << endl;
 	for (solutionIter it = solution.begin(); it != solution.end(); it++) {
-		cout << it->first.macroName << ',' << it->first.instTermName << ',' << it->second.x() << ',' << it->second.y() << endl;
+		cout << it->first.macroName << ", " << it->first.instTermName << ", " << it->second.x() << ", " << it->second.y() << endl;
 	}
 }
