@@ -16,10 +16,11 @@ Ymin = cells(end,4);
 
 width = Xmax - Xmin;
 height = Ymax - Ymin;
-rectangle('position',[Xmin, Ymin, width, height]);
+rectangle('position',[Xmin-10000, Ymin-10000, width+20000, height+20000]);
+axis equal;
 axis off;
-xlim([Xmin - 3000, Xmax + 3000]);
-ylim([Ymin - 3000, Ymax + 3000]);
+xlim([Xmin - 13000, Xmax + 13000]);
+ylim([Ymin - 13000, Ymax + 13000]);
 hold on; 
 
 cells_rsp=cells;

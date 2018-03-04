@@ -9,7 +9,7 @@
 #include "OAHelper.h"
 #include "designChecker.h"
 #include "PAutils.h"
-#include "pinAssigner.h"
+#include "PAsolution.h"
 
 using namespace oa;
 using namespace std;
@@ -69,7 +69,8 @@ int main(int argc, char *argv[])
 	oaString netName, instName, masterCellName, assocTermName, termName;
 #define test true
 #if test
-	printDataForMatlab(block, "PAdata.txt");
+	PAsolution initialSolution(block);
+	initialSolution.printSolution();
 #else
 
 	//=====================================================================

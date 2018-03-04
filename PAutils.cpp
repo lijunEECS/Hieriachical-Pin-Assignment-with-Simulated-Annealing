@@ -2,21 +2,32 @@
 #include <iostream>
 using namespace std;
 
+
+/* The struct macroPin is used to index pin location
+*  For hierarchical pin assignment, pin location should
+*  only depend on the macro name and pin name.
+*  Overload < so that macroPin can be used as key for STL map
+*/
 bool operator < (const macroPin& _l, const macroPin& _r)
 {
 	if (_l.macroName < _r.macroName)
 		return true;
 	if (_l.macroName == _r.macroName)
-		return _l.instTermName < _r.instTermName;
+		return _l.PinName < _r.PinName;
 
 	return false;
 }
 
 bool operator == (const macroPin& _l, const macroPin& _r)
 {
-	return (_l.macroName == _r.macroName) && (_l.instTermName == _r.instTermName);
+	return (_l.macroName == _r.macroName) && (_l.PinName == _r.PinName);
 }
 
+/* Since we save a unique copy for each inst before executing
+pin assignment, each inst will have unique master cell name.
+This function parse master cell name to get the original master
+cell name (macro name).
+*/
 oaString getMacroName(oaInst* inst) {
 	oaNativeNS ns;
 	oaString instName, masterCellName, macroName;
@@ -31,17 +42,67 @@ oaString getMacroName(oaInst* inst) {
 	return macroName;
 }
 
-macroPin getMacroPin(oaInstTerm* instTerm)
+
+/* This function fetch an instTerm then use its owner inst's 
+macro name and the instTerm name to create a macroPin struct.
+*/
+macroPin getMacroPin(oaPin* pin, oaInst* inst)
 {
-	oaNativeNS ns;
-	oaInst* inst = instTerm->getInst();
 	oaString macroName = getMacroName(inst);
-	oaString instTermName;
-	instTerm->getTermName(ns, instTermName);
-	return macroPin(macroName, instTermName);
-	
+	oaString PinName;
+	pin->getName(PinName);
+	return macroPin(macroName, PinName);
 }
 
+/* This function rotate the inst 180 degree counterclockwise.
+*/
+void rotate180(oaInst* inst)
+{
+	oaPoint instOrigin;
+	oaPoint center;
+	oaBox bbox;
+	inst->getBBox(bbox);
+	bbox.getCenter(center);
+	center.x() = 2 * center.x();
+	center.y() = 2 * center.y();
+	oaTransform trans(center, oacR180);
+	inst->move(trans);
+}
+
+/* This function rotate the inst 90 degree counterclockwise.
+*/
+void rotate90(oaInst* inst)
+{
+	oaPoint instOrigin;
+	oaPoint center;
+	oaBox bbox;
+	inst->getBBox(bbox);
+	bbox.getCenter(center);
+	int temp = center.x();
+	center.x() +=  center.y();
+	center.y() -= temp;
+	oaTransform trans(center, oacR90);
+	inst->move(trans);
+}
+
+/* This function rotate the inst 270 degree counterclockwise.
+*/
+void rotate270(oaInst* inst)
+{
+	oaPoint instOrigin;
+	oaPoint center;
+	oaBox bbox;
+	inst->getBBox(bbox);
+	bbox.getCenter(center);
+	int temp = center.x();
+	center.x() -= center.y();
+	center.y() += temp;
+	oaTransform trans(center, oacR270);
+	inst->move(trans);
+}
+
+/* This function compute the HPWL for a given net.
+*/
 int getHPWL(oaNet* net) {
 	int termNum = (net->getTerms()).getCount();
 	int instTermNum = (net->getInstTerms()).getCount();
@@ -85,6 +146,10 @@ int getHPWL(oaNet* net) {
 	return tempHPWL;
 }
 
+/* The bounding box of a pinFig is relative to its owner inst.
+This function fetch a pin and its owner inst and return the bounding
+box w.r.t. absolute cordinates.
+*/
 oaBox GetAbsolutePinBBox(oaInst* inst, oaPin* pin)
 {
 	oaIter<oaPinFig> pinFigIter(pin->getFigs());
@@ -102,6 +167,9 @@ oaBox GetAbsolutePinBBox(oaInst* inst, oaPin* pin)
 	return bbox;
 }
 
+/* This function determine if two oaBoxes are adjacent.
+It is used to determine if a pin is external pin.
+*/
 bool adjacent(oaBox& box1, oaBox& box2) 
 {
 	if (box1.left() == box2.left())
@@ -123,6 +191,10 @@ bool adjacent(oaBox& box1, oaBox& box2)
 	return false;
 }
 
+/* The macros may have internal pins (VDD and VSS).
+This function determine if a instTerm is external.
+It is used to exclude internal pins for assignment.
+*/
 bool isExternalPin(oaInstTerm* instTerm)
 {
 	oaInst* inst = instTerm->getInst();
@@ -135,6 +207,10 @@ bool isExternalPin(oaInstTerm* instTerm)
 	return adjacent(instBBox, pinBBox);
 }
 
+/* This function print the bounding boxes of insts and
+pins to a file. Then we can use matlab to analyse and visualize
+the data for debug purposes.
+*/
 void printDataForMatlab(oaBlock* topBlock, const char* filename)
 {
 	int left = INT_MAX;
