@@ -13,17 +13,21 @@ using namespace oa;
 #define ROTATE90 1
 #define ROTATE180 2
 #define ROTATE270 3
+#define random(a,b) (rand()%(b-a+1)+a)
 
 class PAsolution
 {
 public:
-	PAsolution(oaBlock* topblock);
+	PAsolution();
+	PAsolution(oaBlock* topblock, pinDict& dict, oaNativeNS _ns);
+	PAsolution(PAsolution& _ps, bool smallPerturbation, int perturbationRange);
 	virtual ~PAsolution();
 	void printSolution();
-private:
 	oaNativeNS ns;
+	pinDict _pinDict;
 	pinMove _pinMove;
 	map<oaInst*, int> _rotation;
+private:
 };
 
 #endif

@@ -10,12 +10,11 @@
 #include "designChecker.h"
 #include "PAutils.h"
 #include "PAsolution.h"
+#include "SAassigner.h"
 
 using namespace oa;
 using namespace std;
-
 static oaNativeNS ns;
-
 /*
  * 
  */
@@ -69,8 +68,53 @@ int main(int argc, char *argv[])
 	oaString netName, instName, masterCellName, assocTermName, termName;
 #define test true
 #if test
-	PAsolution initialSolution(block);
+
+	/*oaIter<oaInst> instIter(block->getInsts());
+	oaInst* inst = instIter.getNext();
+	inst->setOrient(oacR180);
+	printDataForMatlab(block, "PAdata.txt");*/
+
+	/*oaIter<oaInst> instIter(block->getInsts());
+	oaInst* inst = instIter.getNext();
+	oaDesign* master = inst->getMaster();
+	master->getCellName(ns, masterCellName);
+	oaBox bbox;
+	inst->getBBox(bbox);
+	oaPoint origin;
+	inst->getOrigin(origin);
+	cout << masterCellName << ", " << inst->getOrient().getName() << ", "<<bbox.left()<<", "<<bbox.right()<<", "<<bbox.top()<<", "<<bbox.bottom()<< endl;
+	cout << origin.x() << ", " << origin.y() << endl;
+	oaPoint newOrigin(bbox.right(), bbox.top());
+	inst->setOrigin(newOrigin);
+	inst->setOrient(oacR180);
+	inst->getBBox(bbox);
+	inst->getOrigin(origin);
+	cout << masterCellName << ", " << inst->getOrient().getName() << ", " << bbox.left() << ", " << bbox.right() << ", " << bbox.top() << ", " << bbox.bottom() << endl;
+	cout << origin.x() << ", " << origin.y() << endl;
+	inst->setOrient(oacR0);
+	inst->getBBox(bbox);
+	inst->getOrigin(origin);
+	cout << masterCellName << ", " << inst->getOrient().getName() << ", " << bbox.left() << ", " << bbox.right() << ", " << bbox.top() << ", " << bbox.bottom() << endl;
+	cout << origin.x() << ", " << origin.y() << endl;*/
+
+
+	printDataForMatlab(block, "PAdata_golden.txt");
+	pinDict globalDict;
+	buildPinDict(block, globalDict);
+	printPinDict(globalDict);
+	PAsolution initialSolution(block, globalDict, ns);
 	initialSolution.printSolution();
+	cout << 1 << endl;
+	PAsolution perturbatedSolution(initialSolution, 1, 50);
+	perturbatedSolution.printSolution();
+	cout << 2 << endl;
+	SAassigner assigner(perturbatedSolution, inputRules, globalDict, ns);
+	cout << 3 << endl;
+	assigner.applySolution(block);
+	cout << 4 << endl;
+	printDataForMatlab(block, "PAdata.txt");
+	printPinDict(globalDict);
+
 #else
 
 	//=====================================================================
