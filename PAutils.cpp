@@ -97,34 +97,49 @@ macroPin getMacroPin(oaPin* pin, oaInst* inst, pinDict& dict)
 */
 void rotate180(oaInst* inst)
 {
+	oaPoint instOrigin;
+	oaPoint center;
 	oaBox bbox;
 	inst->getBBox(bbox);
-	oaPoint newOrigin(bbox.right(), bbox.top());
-	inst->setOrigin(newOrigin);
-	inst->setOrient(oacR180);
+	bbox.getCenter(center);
+	center.x() = 2 * center.x();
+	center.y() = 2 * center.y();
+	oaTransform trans(center, oacR180);
+	inst->move(trans);
 }
 
 /* This function rotate the inst 90 degree counterclockwise.
 */
 void rotate90(oaInst* inst)
 {
+	oaPoint instOrigin;
+	oaPoint center;
 	oaBox bbox;
 	inst->getBBox(bbox);
-	oaPoint newOrigin(bbox.right(), bbox.bottom());
-	inst->setOrigin(newOrigin);
-	inst->setOrient(oacR90);
+	bbox.getCenter(center);
+	int temp = center.x();
+	center.x() += center.y();
+	center.y() -= temp;
+	oaTransform trans(center, oacR90);
+	inst->move(trans);
 }
 
 /* This function rotate the inst 270 degree counterclockwise.
 */
 void rotate270(oaInst* inst)
 {
+	oaPoint instOrigin;
+	oaPoint center;
 	oaBox bbox;
 	inst->getBBox(bbox);
-	oaPoint newOrigin(bbox.left(), bbox.top());
-	inst->setOrigin(newOrigin);
-	inst->setOrient(oacR270);
+	bbox.getCenter(center);
+	int temp = center.x();
+	center.x() -= center.y();
+	center.y() += temp;
+	oaTransform trans(center, oacR270);
+	inst->move(trans);
 }
+
 
 
 /* This function compute the HPWL for a given net.
@@ -376,344 +391,6 @@ void buildPinDict(oaBlock* block, pinDict& dict)
 	}
 }
 
-void movePin(oaPinFig* pinFig, oaBox& pinBBox, int side, int instHeight, int instWidth, int moveDBU)
-{
-	if (moveDBU == 0)
-		return;
-
-	oaPoint offset;
-
-	if (side == ON_LEFTBOTTOM)
-	{
-		if (moveDBU > 0)
-		{
-			if (moveDBU > instWidth - pinBBox.right())
-			{
-				offset.set(instWidth - pinBBox.right(), 0);
-				//offset.transform(trans);
-				oaTransform trans2 = oaTransform(offset);
-				pinFig->move(trans2);
-				movePin(pinFig, pinBBox, ON_RIGHTBOTTOM, instHeight, instWidth, moveDBU - (instWidth - pinBBox.right()));
-			}
-			else
-			{
-				offset.set(moveDBU, 0);
-				//offset.transform(trans);
-				oaTransform trans2 = oaTransform(offset);
-				pinFig->move(trans2);
-				return;
-			}
-		}
-		else
-		{
-			if (-moveDBU > instHeight - pinBBox.top())
-			{
-				offset.set(0, instHeight - pinBBox.top());
-				//offset.transform(trans);
-				oaTransform trans2 = oaTransform(offset);
-				pinFig->move(trans2);
-				movePin(pinFig, pinBBox, ON_LEFTTOP, instHeight, instWidth, moveDBU + instHeight - pinBBox.top());
-			}
-			else
-			{
-				offset.set(0, -moveDBU);
-				//offset.transform(trans);
-				oaTransform trans2 = oaTransform(offset);
-				pinFig->move(trans2);
-				return;
-			}
-		}
-	}
-	else if (side == ON_RIGHTBOTTOM)
-	{
-		if (moveDBU > 0)
-		{
-			if (moveDBU > instHeight - pinBBox.top())
-			{
-				offset.set(0, instHeight - pinBBox.top());
-				//offset.transform(trans);
-				oaTransform trans2 = oaTransform(offset);
-				pinFig->move(trans2);
-				movePin(pinFig, pinBBox, ON_RIGHTTOP, instHeight, instWidth, moveDBU - (instHeight - pinBBox.top()));
-			}
-			else
-			{
-				offset.set(0, moveDBU);
-				//offset.transform(trans);
-				oaTransform trans2 = oaTransform(offset);
-				pinFig->move(trans2);
-				return;
-			}
-		}
-		else
-		{
-			if (-moveDBU > pinBBox.left())
-			{
-				offset.set(-pinBBox.left(), 0);
-				//offset.transform(trans);
-				oaTransform trans2 = oaTransform(offset);
-				pinFig->move(trans2);
-				movePin(pinFig, pinBBox, ON_LEFTBOTTOM, instHeight, instWidth, moveDBU + pinBBox.left());
-			}
-			else
-			{
-				offset.set(moveDBU, 0);
-				//offset.transform(trans);
-				oaTransform trans2 = oaTransform(offset);
-				pinFig->move(trans2);
-				return;
-			}
-		}
-	}
-	else if (side == ON_RIGHTTOP)
-	{
-		if (moveDBU > 0)
-		{
-			if (moveDBU > pinBBox.left())
-			{
-				offset.set(-pinBBox.left(), 0);
-				//offset.transform(trans);
-				oaTransform trans2 = oaTransform(offset);
-				pinFig->move(trans2);
-				movePin(pinFig, pinBBox, ON_LEFTTOP, instHeight, instWidth, moveDBU - pinBBox.left());
-			}
-			else
-			{
-				offset.set(-moveDBU, 0);
-				//offset.transform(trans);
-				oaTransform trans2 = oaTransform(offset);
-				pinFig->move(trans2);
-				return;
-			}
-		}
-		else
-		{
-			if (-moveDBU > pinBBox.bottom())
-			{
-				offset.set(0, -pinBBox.bottom());
-				//offset.transform(trans);
-				oaTransform trans2 = oaTransform(offset);
-				pinFig->move(trans2);
-				movePin(pinFig, pinBBox, ON_RIGHTBOTTOM, instHeight, instWidth, moveDBU + pinBBox.bottom());
-			}
-			else
-			{
-				offset.set(0, -moveDBU);
-				//offset.transform(trans);
-				oaTransform trans2 = oaTransform(offset);
-				pinFig->move(trans2);
-				return;
-			}
-		}
-	}
-	else if (side == ON_LEFTTOP)
-	{
-		if (moveDBU > 0)
-		{
-			if (moveDBU > pinBBox.bottom())
-			{
-				offset.set(0, -pinBBox.bottom());
-				//offset.transform(trans);
-				oaTransform trans2 = oaTransform(offset);
-				pinFig->move(trans2);
-				movePin(pinFig, pinBBox, ON_LEFTBOTTOM, instHeight, instWidth, moveDBU - pinBBox.bottom());
-			}
-			else
-			{
-				offset.set(0, -moveDBU);
-				//offset.transform(trans);
-				oaTransform trans2 = oaTransform(offset);
-				pinFig->move(trans2);
-				return;
-			}
-		}
-		else
-		{
-			if (-moveDBU > instWidth - pinBBox.right())
-			{
-				offset.set(instWidth - pinBBox.right(), 0);
-				//offset.transform(trans);
-				oaTransform trans2 = oaTransform(offset);
-				pinFig->move(trans2);
-				movePin(pinFig, pinBBox, ON_RIGHTBOTTOM, instHeight, instWidth, moveDBU + instWidth - pinBBox.right());
-			}
-			else
-			{
-				offset.set(-moveDBU, 0);
-				//offset.transform(trans);
-				oaTransform trans2 = oaTransform(offset);
-				pinFig->move(trans2);
-				return;
-			}
-		}
-	}
-	else if (side == ON_BOTTOM)
-	{
-		if (moveDBU > 0)
-		{
-			if (moveDBU > instWidth - pinBBox.right())
-			{
-				offset.set(instWidth - pinBBox.right(), 0);
-				//offset.transform(trans);
-				oaTransform trans2 = oaTransform(offset);
-				pinFig->move(trans2);
-				movePin(pinFig, pinBBox, ON_RIGHTBOTTOM, instHeight, instWidth, moveDBU - (instWidth - pinBBox.right()));
-			}
-			else
-			{
-				offset.set(moveDBU, 0);
-				//offset.transform(trans);
-				oaTransform trans2 = oaTransform(offset);
-				pinFig->move(trans2);
-				return;
-			}
-		}
-		else
-		{
-			if (-moveDBU > pinBBox.left())
-			{
-				offset.set(-pinBBox.left(), 0);
-				//offset.transform(trans);
-				oaTransform trans2 = oaTransform(offset);
-				pinFig->move(trans2);
-				movePin(pinFig, pinBBox, ON_LEFTBOTTOM, instHeight, instWidth, moveDBU + pinBBox.left());
-			}
-			else
-			{
-				offset.set(moveDBU, 0);
-				//offset.transform(trans);
-				oaTransform trans2 = oaTransform(offset);
-				pinFig->move(trans2);
-				return;
-			}
-		}
-	}
-	else if (side == ON_RIGHT)
-	{
-		if (moveDBU > 0)
-		{
-			if (moveDBU > instHeight - pinBBox.top())
-			{
-				offset.set(0, instHeight - pinBBox.top());
-				//offset.transform(trans);
-				oaTransform trans2 = oaTransform(offset);
-				pinFig->move(trans2);
-				movePin(pinFig, pinBBox, ON_RIGHTTOP, instHeight, instWidth, moveDBU - (instHeight - pinBBox.top()));
-			}
-			else
-			{
-				offset.set(0, moveDBU);
-				//offset.transform(trans);
-				oaTransform trans2 = oaTransform(offset);
-				pinFig->move(trans2);
-				return;
-			}
-		}
-		else
-		{
-			if (-moveDBU > pinBBox.bottom())
-			{
-				offset.set(0, -pinBBox.bottom());
-				//offset.transform(trans);
-				oaTransform trans2 = oaTransform(offset);
-				pinFig->move(trans2);
-				movePin(pinFig, pinBBox, ON_RIGHTBOTTOM, instHeight, instWidth, moveDBU + pinBBox.bottom());
-			}
-			else
-			{
-				offset.set(0, -moveDBU);
-				//offset.transform(trans);
-				oaTransform trans2 = oaTransform(offset);
-				pinFig->move(trans2);
-				return;
-			}
-		}
-	}
-	else if (side == ON_TOP)
-	{
-		if (moveDBU > 0)
-		{
-			if (moveDBU > pinBBox.left())
-			{
-				offset.set(-pinBBox.left(), 0);
-				//offset.transform(trans);
-				oaTransform trans2 = oaTransform(offset);
-				pinFig->move(trans2);
-				movePin(pinFig, pinBBox, ON_LEFTTOP, instHeight, instWidth, moveDBU - pinBBox.left());
-			}
-			else
-			{
-				offset.set(-moveDBU, 0);
-				//offset.transform(trans);
-				oaTransform trans2 = oaTransform(offset);
-				pinFig->move(trans2);
-				return;
-			}
-		}
-		else
-		{
-			if (-moveDBU > instWidth - pinBBox.right())
-			{
-				offset.set(instWidth - pinBBox.right(), 0);
-				//offset.transform(trans);
-				oaTransform trans2 = oaTransform(offset);
-				pinFig->move(trans2);
-				movePin(pinFig, pinBBox, ON_RIGHTBOTTOM, instHeight, instWidth, moveDBU + instWidth - pinBBox.right());
-			}
-			else
-			{
-				offset.set(-moveDBU, 0);
-				//offset.transform(trans);
-				oaTransform trans2 = oaTransform(offset);
-				pinFig->move(trans2);
-				return;
-			}
-		}
-
-	}
-	else if (side == ON_LEFT)
-	{
-		if (moveDBU > 0)
-		{
-			if (moveDBU > pinBBox.bottom())
-			{
-				offset.set(0, -pinBBox.bottom());
-				//offset.transform(trans);
-				oaTransform trans2 = oaTransform(offset);
-				pinFig->move(trans2);
-				movePin(pinFig, pinBBox, ON_LEFTBOTTOM, instHeight, instWidth, moveDBU - pinBBox.bottom());
-			}
-			else
-			{
-				offset.set(0, -moveDBU);
-				//offset.transform(trans);
-				oaTransform trans2 = oaTransform(offset);
-				pinFig->move(trans2);
-				return;
-			}
-		}
-		else
-		{
-			if (-moveDBU > instHeight - pinBBox.top())
-			{
-				offset.set(0, instHeight - pinBBox.top());
-				//offset.transform(trans);
-				oaTransform trans2 = oaTransform(offset);
-				pinFig->move(trans2);
-				movePin(pinFig, pinBBox, ON_LEFTTOP, instHeight, instWidth, moveDBU + instHeight - pinBBox.top());
-			}
-			else
-			{
-				offset.set(0, -moveDBU);
-				//offset.transform(trans);
-				oaTransform trans2 = oaTransform(offset);
-				pinFig->move(trans2);
-				return;
-			}
-		}
-	}
-}
-
 void printPinDict(pinDict& dict)
 {
 	cout << "=============================================" << endl;
@@ -726,4 +403,45 @@ void printPinDict(pinDict& dict)
 		pinFig->getBBox(bbox);
 		cout << it->first.instName << ", " <<it->first.pinName<<", "<< "pin" << it->second << ", " << bbox.left() << ", " << bbox.right() << ", " << bbox.top() << ", " << bbox.bottom() << endl;
 	}
+}
+
+int onWhichEdge(oaInst* inst, oaPin* pin)
+{
+	oaBox instBBox;
+	inst->getBBox(instBBox);
+	int instHeight = instBBox.top() - instBBox.bottom();
+	int instWidth = instBBox.right() - instBBox.left();
+
+	oaOrient orient = inst->getOrient();
+	oaOrient inverseOrient = orient.getRelativeOrient(oacR0);
+
+	if (orient == oacR90 || orient == oacR270)
+	{
+		int temp = instHeight;
+		instHeight = instWidth;
+		instWidth = temp;
+	}
+
+	oaIter<oaPinFig> pinFigIter(pin->getFigs());
+	oaPinFig* pinFig = pinFigIter.getNext();
+	oaBox pinBBox;
+	pinFig->getBBox(pinBBox);
+	if (pinBBox.bottom() == 0)
+		return ON_BOTTOM;
+	if (pinBBox.right() == instWidth)
+		return ON_RIGHT;
+	if (pinBBox.top() == instHeight)
+		return ON_TOP;
+	if (pinBBox.left() == 0)
+		return ON_LEFT;
+	bool onBoundary = false;
+	assert(onBoundary);
+	return -1;
+}
+
+void getPinBBox(oaPin* pin, oaBox& bbox)
+{
+	oaIter<oaPinFig> pinFigIter(pin->getFigs());
+	oaPinFig* pinFig = pinFigIter.getNext();
+	pinFig->getBBox(bbox);
 }

@@ -13,7 +13,6 @@ class SAassigner
 public:
 	SAassigner(PAsolution& solution, ProjectInputRules& rules, pinDict& dict, oaNativeNS _ns);
 	virtual ~SAassigner();
-	void applySolution(oaBlock* topBlock);
 
 private:
 	pinDict _pinDict;

@@ -70,47 +70,47 @@ int main(int argc, char *argv[])
 #if test
 
 	/*oaIter<oaInst> instIter(block->getInsts());
-	oaInst* inst = instIter.getNext();
-	inst->setOrient(oacR180);
-	printDataForMatlab(block, "PAdata.txt");*/
+	while (oaInst* inst = instIter.getNext())
+	{
+		oaDesign* master = inst->getMaster();
+		master->getCellName(ns, masterCellName);
+		oaBox bbox;
+		inst->getBBox(bbox);
+		oaPoint origin;
+		inst->getOrigin(origin);
+		cout << masterCellName << ", " << inst->getOrient().getName() << ", " << bbox.left() << ", " << bbox.right() << ", " << bbox.top() << ", " << bbox.bottom() << endl;
+		cout << origin.x() << ", " << origin.y() << endl;
+	}*/
 
-	/*oaIter<oaInst> instIter(block->getInsts());
-	oaInst* inst = instIter.getNext();
-	oaDesign* master = inst->getMaster();
-	master->getCellName(ns, masterCellName);
-	oaBox bbox;
-	inst->getBBox(bbox);
-	oaPoint origin;
-	inst->getOrigin(origin);
-	cout << masterCellName << ", " << inst->getOrient().getName() << ", "<<bbox.left()<<", "<<bbox.right()<<", "<<bbox.top()<<", "<<bbox.bottom()<< endl;
-	cout << origin.x() << ", " << origin.y() << endl;
-	oaPoint newOrigin(bbox.right(), bbox.top());
-	inst->setOrigin(newOrigin);
-	inst->setOrient(oacR180);
-	inst->getBBox(bbox);
-	inst->getOrigin(origin);
-	cout << masterCellName << ", " << inst->getOrient().getName() << ", " << bbox.left() << ", " << bbox.right() << ", " << bbox.top() << ", " << bbox.bottom() << endl;
-	cout << origin.x() << ", " << origin.y() << endl;
-	inst->setOrient(oacR0);
-	inst->getBBox(bbox);
-	inst->getOrigin(origin);
-	cout << masterCellName << ", " << inst->getOrient().getName() << ", " << bbox.left() << ", " << bbox.right() << ", " << bbox.top() << ", " << bbox.bottom() << endl;
-	cout << origin.x() << ", " << origin.y() << endl;*/
-
+	// 100000 iterations take 610ms
+	/*printDataForMatlab(block, "PAdata_golden.txt");
+	pinDict globalDict;
+	buildPinDict(block, globalDict);
+	printPinDict(globalDict);
+	PAsolution initialSolution(block, globalDict, inputRules, ns);
+	clock_t startTime, endTime;
+	startTime = clock();
+	for (int i = 0; i < 100000; i++) {
+		PAsolution perturbatedSolution(initialSolution);
+		perturbatedSolution.pertubate(100);
+	}
+	endTime = clock();
+	cout << "Duration: " << double(endTime - startTime) / CLOCKS_PER_SEC * 1000 << "ms." << endl;*/
 
 	printDataForMatlab(block, "PAdata_golden.txt");
 	pinDict globalDict;
 	buildPinDict(block, globalDict);
 	printPinDict(globalDict);
-	PAsolution initialSolution(block, globalDict, ns);
+	PAsolution initialSolution(block, globalDict, inputRules, ns);
 	initialSolution.printSolution();
 	cout << 1 << endl;
-	PAsolution perturbatedSolution(initialSolution, 1, 50);
+	PAsolution perturbatedSolution(initialSolution);
+	perturbatedSolution.pertubate(100);
 	perturbatedSolution.printSolution();
 	cout << 2 << endl;
 	SAassigner assigner(perturbatedSolution, inputRules, globalDict, ns);
 	cout << 3 << endl;
-	assigner.applySolution(block);
+	perturbatedSolution.applySolution(block);
 	cout << 4 << endl;
 	printDataForMatlab(block, "PAdata.txt");
 	printPinDict(globalDict);

@@ -1,2 +1,3 @@
-rm *.cpp
-rm *.h
+git rm *.cpp
+git rm *.h
+git rm *.m

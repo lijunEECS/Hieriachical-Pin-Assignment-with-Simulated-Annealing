@@ -58,7 +58,7 @@ macroPin getMacroPin(oaPin* pin, oaInst* inst, pinDict& dict);
 
 int getHPWL(oaNet* net);
 
-oaBox GetAbsoluteInstTermBBox(oaInst* inst, oaPin* pin);
+oaBox GetAbsolutePinBBox(oaInst* inst, oaPin* pin);
 
 bool isExternalPin(oaInstTerm* instTerm);
 
@@ -72,10 +72,12 @@ void rotate270(oaInst* inst);
 
 void buildPinDict(oaBlock* block, pinDict& dict);
 
-void movePin(oaPinFig* pinFig, oaBox& pinBBox, int side, int instHeight, int instWidth, int moveDBU);
-
 void printDataForMatlab(oaBlock* topBlock, const char* filename);
 
+int onWhichEdge(oaInst* inst, oaPin* pin);
+
 void printPinDict(pinDict& dict);
+
+void getPinBBox(oaPin* pin, oaBox& bbox);
 
 #endif
