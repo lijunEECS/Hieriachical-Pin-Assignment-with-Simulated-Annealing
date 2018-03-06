@@ -25,6 +25,7 @@ public:
 	PAsolution();
 	PAsolution(oaBlock* topblock);
 	PAsolution(PAsolution& _ps);
+	PAsolution(PAsolution& _ps1, PAsolution& _ps2);
 	virtual ~PAsolution();
 	void printSolution();
 	void pertubate(int perturbationRange);

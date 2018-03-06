@@ -1,7 +1,7 @@
 clc;
 clear;
 close;
-filename = "PAdata_2.txt";
+filename = "PAdata_golden.txt";
 
 cells = load(filename);
 

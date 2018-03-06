@@ -106,7 +106,7 @@ PAsolution::PAsolution(oaBlock* topblock)
 				}
 				
 				macroPin temp = getMacroPin(temp_pin, inst, _pinDict);
-				_pinPos[temp] = pinPos - 1;
+				_pinPos[temp] = pinPos;
 			}
 		}
 		_rotation[inst] = NOROTATE;
@@ -117,6 +117,22 @@ PAsolution::PAsolution(PAsolution& _ps)
 {
 	_pinPos = _ps._pinPos;
 	_rotation = _ps._rotation;
+}
+
+PAsolution::PAsolution(PAsolution& _ps1, PAsolution& _ps2)
+{
+	_pinPos = _ps1._pinPos;
+	_rotation = _ps2._rotation;
+	for(map<oaInst*, int>::iterator it = _rotation.begin();it!= _rotation.end();it++){
+		switch(it->second){
+			case ROTATE90:
+				it->second=ROTATE270;
+				break;
+			case ROTATE270:
+				it->second=ROTATE90;
+				break;
+		}
+	}
 }
 
 void PAsolution::pertubate(int perturbationRange)
@@ -230,9 +246,9 @@ void PAsolution::applySolution(oaBlock* topblock)
 				int pinWidth = pinBBox.right() - pinBBox.left();
 				oaPoint originalPinCenter, newPinCenter;
 				pinBBox.getCenter(originalPinCenter);
-				if (pos <= 0 || pos > 2 * (xNum + yNum)) {
+				if (pos < 0 || pos >= 2 * (xNum + yNum)) {
 					cout << pos << endl;
-					assert(pos > 0 && pos <= 2 * (xNum + yNum));
+					assert(pos >= 0 && pos < 2 * (xNum + yNum));
 				}
 				if (pos < xNum)
 				{

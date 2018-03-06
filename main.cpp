@@ -103,15 +103,29 @@ int main(int argc, char *argv[])
 	dummySolution.initializeStaticMember(block, globalDict, inputRules, ns);
 	PAsolution initialSolution(block);
 	initialSolution.printSolution();
+
+	// PAsolution tempSolution(initialSolution);
+	// tempSolution.pertubate(100);
+	// tempSolution.legalizePinPos();
+	// tempSolution.printSolution();
+	// tempSolution.applySolution(block);
+	// PAsolution inverseSolution(initialSolution,tempSolution);
+	// //evaluate
+	// inverseSolution.applySolution(block);
+	// inverseSolution.printSolution();
+
 	clock_t startTime, endTime;
 	startTime = clock();
-	for (int i = 0; i < 100000; i++) {
-		initialSolution.pertubate(100);
-		initialSolution.legalizePinPos();
+	for (int i = 0; i < 2000; i++) {
+		PAsolution tempSolution(initialSolution);
+		tempSolution.pertubate(100);
+		tempSolution.legalizePinPos();
+		tempSolution.applySolution(block);
+		PAsolution inverseSolution(initialSolution,tempSolution);
+		//evaluate
+		inverseSolution.applySolution(block);
 	}
 	endTime = clock();
-	initialSolution.printSolution();
-	initialSolution.applySolution(block);
 	printPinDict(globalDict);
 	printDataForMatlab(block, "PAdata_1.txt");
 	cout << "Duration: " << double(endTime - startTime) / CLOCKS_PER_SEC * 1000 << "ms." << endl;
