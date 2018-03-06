@@ -3,6 +3,8 @@
 
 #include <string>
 #include <map>
+#include <math.h>
+#include <climits>
 #include "oaDesignDB.h"
 #include "PAutils.h"
 #include "OAHelper.h"
@@ -21,25 +23,29 @@ class PAsolution
 {
 public:
 	PAsolution();
-	PAsolution(oaBlock* topblock, pinDict& dict, ProjectInputRules& rules, oaNativeNS _ns);
+	PAsolution(oaBlock* topblock);
 	PAsolution(PAsolution& _ps);
 	virtual ~PAsolution();
 	void printSolution();
 	void pertubate(int perturbationRange);
-	oaNativeNS ns;
-	pinDict _pinDict;
-	pinMove _pinPos;               //应该把合法位置编号，记录每一个pin的位置序号而不是移动的step数目！
+	void legalizePinPos();               
+	static void initializeStaticMember(oaBlock* topblock, pinDict& dict, ProjectInputRules& rules, oaNativeNS _ns);
+	static oaNativeNS ns;
+	static pinDict _pinDict;
+	static map<oaInst*, int> _maxPos;
+	static map<oaInst*, int> _xPosNum;
+	static map<oaInst*, int> _yPosNum;
+	static map<oaInst*, int> _minX;
+	static map<oaInst*, int> _minY;
+	static map<oaString, int> _macroMaxPos;
+	static int pinMoveStep;
+	static int minPinPitch;
+	pinMove _pinPos;
 	map<oaInst*, int> _rotation;
-	map<oaInst*, int> _maxPos;
-	map<oaInst*, int> _xPosNum;
-	map<oaInst*, int> _yPosNum;
-	map<oaInst*, int> _minX;
-	map<oaInst*, int> _minY;
-	map<oaString, int> _macroMaxPos;
-	int pinMoveStep;
-	int minPinPitch;
 	void applySolution(oaBlock* topblock);
 private:
 };
+
+
 
 #endif

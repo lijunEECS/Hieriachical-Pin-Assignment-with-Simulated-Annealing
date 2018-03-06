@@ -18,6 +18,17 @@ static oaNativeNS ns;
 /*
  * 
  */
+int PAsolution::minPinPitch = -1;
+int PAsolution::pinMoveStep = -1;
+oaNativeNS PAsolution::ns = ns;
+pinDict PAsolution::_pinDict;
+map<oaInst*, int> PAsolution::_maxPos;
+map<oaInst*, int> PAsolution::_xPosNum;
+map<oaInst*, int> PAsolution::_yPosNum;
+map<oaInst*, int> PAsolution::_minX;
+map<oaInst*, int> PAsolution::_minY;
+map<oaString, int> PAsolution::_macroMaxPos;
+
 int main(int argc, char *argv[])
 {
     //Hello World
@@ -83,25 +94,35 @@ int main(int argc, char *argv[])
 	}*/
 
 	// 100000 iterations take 610ms
+	printDataForMatlab(block, "PAdata_golden.txt");
+	pinDict globalDict;
+	buildPinDict(block, globalDict);
+	cout << "=================inital==========================" << endl;
+	printPinDict(globalDict);
+	PAsolution dummySolution;
+	dummySolution.initializeStaticMember(block, globalDict, inputRules, ns);
+	PAsolution initialSolution(block);
+	initialSolution.printSolution();
+	clock_t startTime, endTime;
+	startTime = clock();
+	for (int i = 0; i < 100000; i++) {
+		initialSolution.pertubate(100);
+		initialSolution.legalizePinPos();
+	}
+	endTime = clock();
+	initialSolution.printSolution();
+	initialSolution.applySolution(block);
+	printPinDict(globalDict);
+	printDataForMatlab(block, "PAdata_1.txt");
+	cout << "Duration: " << double(endTime - startTime) / CLOCKS_PER_SEC * 1000 << "ms." << endl;
+
 	/*printDataForMatlab(block, "PAdata_golden.txt");
 	pinDict globalDict;
 	buildPinDict(block, globalDict);
 	printPinDict(globalDict);
-	PAsolution initialSolution(block, globalDict, inputRules, ns);
-	clock_t startTime, endTime;
-	startTime = clock();
-	for (int i = 0; i < 100000; i++) {
-		PAsolution perturbatedSolution(initialSolution);
-		perturbatedSolution.pertubate(100);
-	}
-	endTime = clock();
-	cout << "Duration: " << double(endTime - startTime) / CLOCKS_PER_SEC * 1000 << "ms." << endl;*/
-
-	printDataForMatlab(block, "PAdata_golden.txt");
-	pinDict globalDict;
-	buildPinDict(block, globalDict);
-	printPinDict(globalDict);
-	PAsolution initialSolution(block, globalDict, inputRules, ns);
+	PAsolution dummySolution;
+	dummySolution.initializeStaticMember(block, globalDict, inputRules, ns);
+	PAsolution initialSolution(block);
 	initialSolution.printSolution();
 	cout << 1 << endl;
 	PAsolution perturbatedSolution(initialSolution);
@@ -113,7 +134,7 @@ int main(int argc, char *argv[])
 	perturbatedSolution.applySolution(block);
 	cout << 4 << endl;
 	printDataForMatlab(block, "PAdata.txt");
-	printPinDict(globalDict);
+	printPinDict(globalDict);*/
 
 #else
 

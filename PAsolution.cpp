@@ -3,17 +3,12 @@
 #include <iostream>
 using namespace std;
 
-PAsolution::PAsolution()
-{
-}
-
-PAsolution::PAsolution(oaBlock* topblock, pinDict& dict, ProjectInputRules& rules, oaNativeNS _ns)
+void PAsolution::initializeStaticMember(oaBlock* topblock, pinDict& dict, ProjectInputRules& rules, oaNativeNS _ns)
 {
 	ns = _ns;
 	_pinDict = dict;
 	pinMoveStep = (int)(rules.getPinMoveStep() * DBU_PER_MACRON);
 	minPinPitch = (int)(rules.getMinPinPitch() * DBU_PER_MACRON);
-	
 	oaIter<oaInst> instIter(topblock->getInsts());
 	while (oaInst* inst = instIter.getNext()) {
 		int maxCenterX, minCenterX, maxCenterY, minCenterY;
@@ -69,8 +64,15 @@ PAsolution::PAsolution(oaBlock* topblock, pinDict& dict, ProjectInputRules& rule
 		_minX[inst] = minCenterX;
 		_minY[inst] = minCenterY;
 	}
+}
 
-	instIter.reset();
+PAsolution::PAsolution()
+{
+}
+
+PAsolution::PAsolution(oaBlock* topblock)
+{
+	oaIter<oaInst> instIter(topblock->getInsts());
 	while (oaInst* inst = instIter.getNext()) {
 		oaString macroName = getMacroName(inst);
 		oaIter<oaInstTerm> instTermIter(inst->getInstTerms());
@@ -90,16 +92,16 @@ PAsolution::PAsolution(oaBlock* topblock, pinDict& dict, ProjectInputRules& rule
 				int pinPos;
 				switch (side){
 					case ON_BOTTOM:
-						pinPos = pinCenter.x() / pinMoveStep + 1;
+						pinPos = pinCenter.x() / pinMoveStep;
 						break;
 					case ON_RIGHT:
-						pinPos = _xPosNum[inst] + (pinCenter.y() / pinMoveStep + 1);
+						pinPos = _xPosNum[inst] + (pinCenter.y() / pinMoveStep);
 						break;
 					case ON_TOP:
-						pinPos = 2 * _xPosNum[inst] + _yPosNum[inst] - pinCenter.x() / pinMoveStep;
+						pinPos = 2 * _xPosNum[inst] + _yPosNum[inst] - pinCenter.x() / pinMoveStep - 1;
 						break;
 					case ON_LEFT:
-						pinPos = _maxPos[inst] - pinCenter.y() / pinMoveStep;
+						pinPos = _maxPos[inst] - pinCenter.y() / pinMoveStep - 1;
 						break;
 				}
 				
@@ -107,7 +109,6 @@ PAsolution::PAsolution(oaBlock* topblock, pinDict& dict, ProjectInputRules& rule
 				_pinPos[temp] = pinPos - 1;
 			}
 		}
-
 		_rotation[inst] = NOROTATE;
 	}
 }
@@ -116,16 +117,6 @@ PAsolution::PAsolution(PAsolution& _ps)
 {
 	_pinPos = _ps._pinPos;
 	_rotation = _ps._rotation;
-	ns = _ps.ns;
-	_pinDict = _ps._pinDict;
-	_maxPos = _ps._maxPos;
-	_xPosNum = _ps._xPosNum;
-	_yPosNum = _ps._yPosNum;
-	_macroMaxPos = _ps._macroMaxPos;
-	pinMoveStep = _ps.pinMoveStep;
-	minPinPitch = _ps.minPinPitch;
-	_minX = _ps._minX;
-	_minY = _ps._minY;
 }
 
 void PAsolution::pertubate(int perturbationRange)
@@ -133,23 +124,30 @@ void PAsolution::pertubate(int perturbationRange)
 	for (pinMoveIter it = _pinPos.begin(); it != _pinPos.end(); it++)
 	{
 		it->second += random(-perturbationRange, perturbationRange);
-		if (_macroMaxPos[it->first.macroName] <= 0)
+		/*if (_macroMaxPos[it->first.macroName] <= 0)
 		{
 			cout << "****************************" << endl;
 			cout << it->first.macroName << ", " << _macroMaxPos[it->first.macroName] << endl;
 			cout << "****************************" << endl;
 			assert(_macroMaxPos[it->first.macroName] > 0);
 		}
-		it->second %= _macroMaxPos[it->first.macroName];
+		it->second %= _macroMaxPos[it->first.macroName];*/
 		if (it->second < 0)
 		{
 			it->second += _macroMaxPos[it->first.macroName];
+		}
+		if (it->second >= _macroMaxPos[it->first.macroName])
+		{
+			it->second %= _macroMaxPos[it->first.macroName];
 		}
 	}
 	for (map<oaInst*, int>::iterator it = _rotation.begin(); it != _rotation.end(); it++) 
 	{
 		it->second += random(NOROTATE, ROTATE270);
-		it->second %= (ROTATE270 + 1);
+		if (it->second > ROTATE270)
+		{
+			it->second %= (ROTATE270 + 1);
+		}
 	}
 }
 
@@ -232,7 +230,10 @@ void PAsolution::applySolution(oaBlock* topblock)
 				int pinWidth = pinBBox.right() - pinBBox.left();
 				oaPoint originalPinCenter, newPinCenter;
 				pinBBox.getCenter(originalPinCenter);
-				assert(pos > 0 && pos <= 2 * (xNum + yNum));
+				if (pos <= 0 || pos > 2 * (xNum + yNum)) {
+					cout << pos << endl;
+					assert(pos > 0 && pos <= 2 * (xNum + yNum));
+				}
 				if (pos < xNum)
 				{
 					int x = minX + pos*pinMoveStep;
@@ -262,5 +263,56 @@ void PAsolution::applySolution(oaBlock* topblock)
 		}
 
 
+	}
+}
+
+void PAsolution::legalizePinPos()
+{
+	int movePitch = (int)ceil((float)minPinPitch / pinMoveStep);
+	for (pinMoveIter it = _pinPos.begin(); it != _pinPos.end(); it++)
+	{
+		oaString currentMacroName = it->first.macroName;
+		int currentPinPos = it->second;
+		int rightNeighborLabel = -1;
+		int rightNeighborPinPos = INT_MAX;
+		int minPinPos = INT_MAX;
+		int minPosPinLabel = -1;
+		bool findMacro = false;
+		int pinPitch;
+		for (pinMoveIter itt = _pinPos.begin(); itt != _pinPos.end(); itt++)
+		{
+			if (itt->first.macroName != currentMacroName && findMacro) break;
+			if (itt->first.macroName == currentMacroName)
+			{
+				findMacro = true;
+			}
+			if (itt->second > currentPinPos)
+			{
+				if (itt->second < rightNeighborPinPos)
+				{
+					rightNeighborPinPos = itt->second;
+					rightNeighborLabel = itt->first.pinLabel;
+				}
+			}
+			if (itt->second < minPinPos)
+			{
+				minPinPos = itt->second;
+				minPosPinLabel = itt->first.pinLabel;
+			}
+		}
+		if (rightNeighborPinPos == INT_MAX)
+		{
+			pinPitch = minPinPos;
+		}
+		else
+		{
+			pinPitch = rightNeighborPinPos - currentPinPos;
+		}
+		if (pinPitch < movePitch) {
+			it->second -= (movePitch - pinPitch);
+			if (it->second < 0) {
+				it->second += _macroMaxPos[it->first.macroName];
+			}
+		}
 	}
 }

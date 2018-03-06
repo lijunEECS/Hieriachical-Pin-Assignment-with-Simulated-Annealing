@@ -1,7 +1,7 @@
 clc;
 clear;
 close;
-filename = "PAdata_rotate90.txt";
+filename = "PAdata_2.txt";
 
 cells = load(filename);
 
