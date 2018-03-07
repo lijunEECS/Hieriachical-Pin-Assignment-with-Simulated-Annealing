@@ -3,6 +3,7 @@
 
 #include <string>
 #include <map>
+#include <set>
 #include <math.h>
 #include <climits>
 #include "oaDesignDB.h"
@@ -33,17 +34,34 @@ public:
 	static void initializeStaticMember(oaBlock* topblock, pinDict& dict, ProjectInputRules& rules, oaNativeNS _ns);
 	static oaNativeNS ns;
 	static pinDict _pinDict;
-	static map<oaInst*, int> _maxPos;
-	static map<oaInst*, int> _xPosNum;
-	static map<oaInst*, int> _yPosNum;
-	static map<oaInst*, int> _minX;
-	static map<oaInst*, int> _minY;
-	static map<oaString, int> _macroMaxPos;
+	
+	static int pinWidth;
+	static int pinHeight;
+	static float alpha;
+	static float beta;
+	static float gamma;
+
+	static std::map<oaInst*, int> _maxPos;
+	static std::map<oaInst*, int> _xPosNum;
+	static std::map<oaInst*, int> _yPosNum;
+	static std::map<oaInst*, int> _minX;
+	static std::map<oaInst*, int> _minY;
+	static std::map<oaString, int> _macroMaxPos;
+	static std::map<macroPin, int> _originalPinPos;
+
+    static std::map<oaInst*, int> _instHeight;
+    static std::map<oaInst*, int> _instWidth;
+
+    static std::map<macroPin, oaPoint> _relativePos;
+
 	static int pinMoveStep;
 	static int minPinPitch;
-	pinMove _pinPos;
-	map<oaInst*, int> _rotation;
+    static int maxPerturbation;
+
+	std::map<macroPin, int> _pinPos;
+	std::map<oaInst*, int> _rotation;
 	void applySolution(oaBlock* topblock);
+	float evaluate(oaBlock* block);
 private:
 };
 

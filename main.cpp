@@ -20,6 +20,12 @@ static oaNativeNS ns;
  */
 int PAsolution::minPinPitch = -1;
 int PAsolution::pinMoveStep = -1;
+int PAsolution::maxPerturbation = -1;
+int PAsolution::pinWidth = -1;
+int PAsolution::pinHeight = -1;
+float PAsolution::alpha = -1;
+float PAsolution::beta = -1;
+float PAsolution::gamma = -1;
 oaNativeNS PAsolution::ns = ns;
 pinDict PAsolution::_pinDict;
 map<oaInst*, int> PAsolution::_maxPos;
@@ -28,6 +34,10 @@ map<oaInst*, int> PAsolution::_yPosNum;
 map<oaInst*, int> PAsolution::_minX;
 map<oaInst*, int> PAsolution::_minY;
 map<oaString, int> PAsolution::_macroMaxPos;
+map<oaInst*, int> PAsolution::_instHeight;
+map<oaInst*, int> PAsolution::_instWidth;
+map<macroPin, oaPoint> PAsolution::_relativePos;
+pinMove PAsolution::_originalPinPos;
 
 int main(int argc, char *argv[])
 {
@@ -101,8 +111,16 @@ int main(int argc, char *argv[])
 	printPinDict(globalDict);
 	PAsolution dummySolution;
 	dummySolution.initializeStaticMember(block, globalDict, inputRules, ns);
+	cout<<"alpha = "<<PAsolution::alpha<<", "<<"beta = "<<PAsolution::beta<<", "<<"gamma = "<<PAsolution::gamma<<endl;
+	// cout << "==relativePos==" << endl;
+	// for(map<macroPin, oaPoint>::iterator it = PAsolution::_relativePos.begin(); it != PAsolution::_relativePos.end();it++)
+	// {
+	// 	cout<<it->second.x()<<", "<<it->second.y()<<endl;
+	// }
+	// cout<<"=============="<<endl;
+
 	PAsolution initialSolution(block);
-	initialSolution.printSolution();
+	PAsolution::_originalPinPos = initialSolution._pinPos;
 
 	// PAsolution tempSolution(initialSolution);
 	// tempSolution.pertubate(100);
@@ -113,17 +131,39 @@ int main(int argc, char *argv[])
 	// //evaluate
 	// inverseSolution.applySolution(block);
 	// inverseSolution.printSolution();
-
 	clock_t startTime, endTime;
 	startTime = clock();
+	float currentEnergy = initialSolution.evaluate(block);
 	for (int i = 0; i < 2000; i++) {
 		PAsolution tempSolution(initialSolution);
 		tempSolution.pertubate(100);
 		tempSolution.legalizePinPos();
 		tempSolution.applySolution(block);
-		PAsolution inverseSolution(initialSolution,tempSolution);
-		//evaluate
-		inverseSolution.applySolution(block);
+		float tempEnergy = tempSolution.evaluate(block);
+		cout << i << "th iteration, tempEnergy: "<<tempEnergy<<", currentEnergy: "<<currentEnergy<<endl;
+		if(tempEnergy < currentEnergy)
+		{
+			cout <<"Improved"<<endl;
+			initialSolution = tempSolution;
+			currentEnergy = tempEnergy;
+		}
+		else
+		{
+			double seed = rand();
+			double gate = 1/(1+exp(-(tempEnergy - currentEnergy)/i));
+			if(seed < gate)
+			{
+				cout<<"Drawback"<<endl;
+				cout << i << "th iteration, tempEnergy: "<<tempEnergy<<", currentEnergy: "<<currentEnergy<<endl;
+				initialSolution = tempSolution;
+				currentEnergy = tempEnergy;
+			}
+			else
+			{
+				PAsolution inverseSolution(initialSolution,tempSolution);
+				inverseSolution.applySolution(block);
+			}
+		}
 	}
 	endTime = clock();
 	printPinDict(globalDict);

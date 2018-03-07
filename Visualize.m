@@ -1,7 +1,7 @@
 clc;
 clear;
 close;
-filename = "PAdata_golden.txt";
+filename = "PAdata_1.txt";
 
 cells = load(filename);
 
@@ -32,7 +32,7 @@ for ii=1:cellNum
     if cells_rsp(ii,5)==1
         rectangle('Position', cells_rsp(ii,1:4),'FaceColor','b');
     elseif cells_rsp(ii,5)==2
-        rectangle('Position', cells_rsp(ii,1:4),'FaceColor','r','LineWidth',5);
+        rectangle('Position', cells_rsp(ii,1:4),'FaceColor','r','LineWidth',2.5);
     end
 end
 %end

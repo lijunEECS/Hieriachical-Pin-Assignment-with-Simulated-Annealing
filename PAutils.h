@@ -9,6 +9,7 @@
 #include <cstdlib>
 #include <ctime>
 #include "oaDesignDB.h"
+
 using namespace std;
 using namespace oa;
 
@@ -20,6 +21,8 @@ using namespace oa;
 #define ON_RIGHTBOTTOM 5
 #define ON_RIGHTTOP 6
 #define ON_LEFTTOP 7
+
+#define DBU_PER_MACRON 2000
 
 struct macroPin
 {
@@ -44,8 +47,6 @@ typedef map<macroPin, int> pinMove;
 typedef map<instPin, int> pinDict; 
 typedef map<instPin, int>::iterator pinDictIter;
 typedef map<macroPin, int>::iterator pinMoveIter;
-
-#define DBU_PER_MACRON 2000
 
 bool operator < (const macroPin& _l, const macroPin& _r);
 bool operator < (const instPin& _l, const instPin& _r);
