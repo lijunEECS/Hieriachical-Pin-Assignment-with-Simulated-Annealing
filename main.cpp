@@ -87,7 +87,7 @@ int main(int argc, char *argv[])
 	// You are free to edit everything in this section (marked by ==)
 
 	oaString netName, instName, masterCellName, assocTermName, termName;
-#define test true
+#define test false
 #if test
 
 	/*oaIter<oaInst> instIter(block->getInsts());
@@ -122,15 +122,25 @@ int main(int argc, char *argv[])
 	PAsolution initialSolution(block);
 	PAsolution::_originalPinPos = initialSolution._pinPos;
 
+	// float e1 = initialSolution.evaluate(block);
+	// initialSolution.printSolution();
+	// initialSolution.legalizePinPos();
+	// initialSolution.printSolution();
+	// float e2 = initialSolution.evaluate(block);
+	// cout<<e1<<endl;
+	// cout<<e2<<endl;
+
 	// PAsolution tempSolution(initialSolution);
 	// tempSolution.pertubate(100);
 	// tempSolution.legalizePinPos();
 	// tempSolution.printSolution();
 	// tempSolution.applySolution(block);
+	// printDataForMatlab(block,"PAdata_1.txt");
 	// PAsolution inverseSolution(initialSolution,tempSolution);
 	// //evaluate
 	// inverseSolution.applySolution(block);
 	// inverseSolution.printSolution();
+	
 	clock_t startTime, endTime;
 	startTime = clock();
 	float currentEnergy = initialSolution.evaluate(block);
@@ -140,6 +150,7 @@ int main(int argc, char *argv[])
 		tempSolution.legalizePinPos();
 		tempSolution.applySolution(block);
 		float tempEnergy = tempSolution.evaluate(block);
+		float deltaEnergy = 0.1*tempEnergy;
 		cout << i << "th iteration, tempEnergy: "<<tempEnergy<<", currentEnergy: "<<currentEnergy<<endl;
 		if(tempEnergy < currentEnergy)
 		{
@@ -149,9 +160,9 @@ int main(int argc, char *argv[])
 		}
 		else
 		{
-			double seed = rand();
-			double gate = 1/(1+exp(-(tempEnergy - currentEnergy)/i));
-			if(seed < gate)
+			int seed = random(0,100);
+			double gate = 1/(1+exp((tempEnergy - currentEnergy)/(i*deltaEnergy)));
+			if(seed < -1)
 			{
 				cout<<"Drawback"<<endl;
 				cout << i << "th iteration, tempEnergy: "<<tempEnergy<<", currentEnergy: "<<currentEnergy<<endl;

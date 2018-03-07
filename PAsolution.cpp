@@ -204,8 +204,14 @@ PAsolution::PAsolution(PAsolution& _ps1, PAsolution& _ps2)
 
 void PAsolution::pertubate(int perturbationRange)
 {
+	//int pinNum = _pinPos.size();
+	//int selectedPin = random(0, pinNum-1);
+	//int i = 0;
 	for (pinMoveIter it = _pinPos.begin(); it != _pinPos.end(); it++)
 	{
+		//if(i != selectedPin) continue;
+		int seed = random(1, 1000);
+		if(seed > 10) continue;
 		if(maxPerturbation>0)
 		{
 			int newPos = it->second + random(-perturbationRange, perturbationRange);
@@ -254,6 +260,8 @@ void PAsolution::pertubate(int perturbationRange)
 	}
 	for (map<oaInst*, int>::iterator it = _rotation.begin(); it != _rotation.end(); it++) 
 	{
+		int seed = random(0,1000);
+		if(seed>5) continue;
 		it->second += random(NOROTATE, ROTATE270);
 		if(_instWidth[it->first]!=_instHeight[it->first]){
 			it->second *= 2;
@@ -343,7 +351,8 @@ void PAsolution::applySolution(oaBlock* topblock)
 
 void PAsolution::legalizePinPos()
 {
-	int movePitch = (int)ceil((float)minPinPitch / pinMoveStep);
+	//int movePitch = (int)ceil((float)minPinPitch / pinMoveStep);
+	//cout<<" = "<<movePitch<<" = "<<endl;
 	for (pinMoveIter it = _pinPos.begin(); it != _pinPos.end(); it++)
 	{
 		oaString currentMacroName = it->first.macroName;
@@ -353,14 +362,11 @@ void PAsolution::legalizePinPos()
 		int minPinPos = INT_MAX;
 		int minPosPinLabel = -1;
 		bool findMacro = false;
-		int pinPitch;
+		//int pinPitch;
 		for (pinMoveIter itt = _pinPos.begin(); itt != _pinPos.end(); itt++)
 		{
-			if (itt->first.macroName != currentMacroName && findMacro) break;
-			if (itt->first.macroName == currentMacroName)
-			{
-				findMacro = true;
-			}
+			if (itt->first.macroName != currentMacroName && findMacro) continue;
+			findMacro = true;
 			if (itt->second > currentPinPos)
 			{
 				if (itt->second < rightNeighborPinPos)
@@ -375,20 +381,49 @@ void PAsolution::legalizePinPos()
 				minPosPinLabel = itt->first.pinLabel;
 			}
 		}
-		if (rightNeighborPinPos == INT_MAX)
+		assert(findMacro);
+		if(rightNeighborPinPos == INT_MAX)
 		{
-			pinPitch = minPinPos;
+			rightNeighborLabel = minPosPinLabel;
+			rightNeighborPinPos = minPinPos;
 		}
-		else
+
+		oaPoint p1, p2;
+		macroPin pinPos1(currentMacroName, it->second);
+		macroPin pinPos2(currentMacroName, rightNeighborPinPos);
+		p1 = _relativePos[pinPos1];
+		p2 = _relativePos[pinPos2];
+		int pinDis = abs(p1.x() - p2.x()) + abs(p1.y() - p2.y());
+		// if(pinDis < minPinPitch)
+		// {
+		// 	cout<<"++++++++++++++++++++++++"<<endl;
+		// 	cout<<currentMacroName<<", "<<it->first.pinLabel<<", "<<rightNeighborLabel<<endl;
+		// 	cout<<"minPinPitch = "<<minPinPitch<<endl;
+		// 	cout<<"pinDis = "<<pinDis<<endl;
+		// 	cout<<"p1: "<<p1.x()<<','<<p1.y()<<"  p2: "<<p2.x()<<','<<p2.y()<<endl;
+		// 	cout<<"p1 pos label: "<<it->second<<"  p2 pos label: "<<rightNeighborPinPos<<endl;
+		// 	cout<<"++++++++++++++++++++++++"<<endl;
+		// 	it->second -= ceil((minPinPitch - pinDis)/pinMoveStep);
+		// }
+		if(it->second < 0)
 		{
-			pinPitch = rightNeighborPinPos - currentPinPos;
+			it->second += _macroMaxPos[currentMacroName];
 		}
-		if (pinPitch < movePitch) {
-			it->second -= (movePitch - pinPitch);
-			if (it->second < 0) {
-				it->second += _macroMaxPos[it->first.macroName];
-			}
-		}
+
+		// if (rightNeighborPinPos == INT_MAX)
+		// {
+		// 	pinPitch = minPinPos;
+		// }
+		// else
+		// {
+		// 	pinPitch = rightNeighborPinPos - currentPinPos;
+		// }
+		// if (pinPitch < movePitch) {
+		// 	it->second -= (movePitch - pinPitch);
+		// 	if (it->second < 0) {
+		// 		it->second += _macroMaxPos[it->first.macroName];
+		// 	}
+		// }
 	}
 }
 
@@ -406,9 +441,11 @@ float PAsolution::evaluate(oaBlock* block)
 		totalWirelength += netLength;
 	}
 
-	int avgPinPerturbation = 0;
+	int pinNum = 0;
+	float avgPinPerturbation = 0;
 	for(pinMoveIter it = _pinPos.begin(); it != _pinPos.end(); it++)
 	{
+		pinNum++;
 		oaString macroName = it->first.macroName;
 		macroPin currentPinPos(macroName, it->second);
 		macroPin newPinPos(macroName, _originalPinPos[it->first]);
@@ -418,6 +455,7 @@ float PAsolution::evaluate(oaBlock* block)
 		oaPoint newPinCenter = _relativePos[newPinPos];
 		avgPinPerturbation += abs(newPinCenter.x() - currentPinCenter.x()) + abs(newPinCenter.y() - currentPinCenter.y());
 	}
+	avgPinPerturbation /= pinNum;
 
 	return alpha*maxWirelength + beta*totalWirelength + gamma*avgPinPerturbation;
 
