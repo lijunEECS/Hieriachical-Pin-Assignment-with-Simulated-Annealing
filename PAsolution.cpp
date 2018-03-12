@@ -10,8 +10,8 @@ void PAsolution::initializeStaticMember(oaBlock* topblock, pinDict& dict, Projec
 	pinMoveStep = (int)(rules.getPinMoveStep() * DBU_PER_MACRON);
 	minPinPitch = (int)(rules.getMinPinPitch() * DBU_PER_MACRON);
 	maxPerturbation = (int)(rules.getMaxPinPerturbation() * DBU_PER_MACRON);
-	assert(maxPerturbation<0 || maxPerturbation>minPinPitch);
-	maxPerturbation -= minPinPitch;
+	//assert(maxPerturbation<0);
+	//maxPerturbation -= minPinPitch;
 	oaIter<oaInst> instIter(topblock->getInsts());
 	while (oaInst* inst = instIter.getNext()) {
 		int maxCenterX, minCenterX, maxCenterY, minCenterY;
@@ -63,6 +63,8 @@ void PAsolution::initializeStaticMember(oaBlock* topblock, pinDict& dict, Projec
 				maxCenterY = instHeight - ((instHeight - pinCenter.y()) % pinMoveStep);
 			}
 		}
+		assert((maxCenterX - minCenterX)%pinMoveStep == 0);
+		assert((maxCenterY - minCenterY)%pinMoveStep == 0);
 		int temp_maxPos = (((maxCenterX - minCenterX)/ pinMoveStep + (maxCenterY - minCenterY)/ pinMoveStep)  + 2) * 2;
 		oaString macroName = getMacroName(inst);
 		_macroMaxPos[macroName] = temp_maxPos;
@@ -140,8 +142,8 @@ void PAsolution::initializeStaticMember(oaBlock* topblock, pinDict& dict, Projec
 	avgHalfInstPerimeter /= instNum;
 
     alpha = totalWirelengthWithoutPA / maxWirelengthWithoutPA;
-    beta = 1.0;
-    gamma = totalWirelengthWithoutPA / avgHalfInstPerimeter;
+    beta = 2.0;
+    gamma = 2.0 * totalWirelengthWithoutPA / avgHalfInstPerimeter;
 }
 
 PAsolution::PAsolution(oaBlock* topblock)
@@ -204,14 +206,14 @@ PAsolution::PAsolution(PAsolution& _ps1, PAsolution& _ps2)
 
 void PAsolution::pertubate(int perturbationRange)
 {
-	//int pinNum = _pinPos.size();
-	//int selectedPin = random(0, pinNum-1);
-	//int i = 0;
+	int pinNum = _pinPos.size();
+	int selectedPin = random(0, pinNum-1);
+	int i = 0;
 	for (pinMoveIter it = _pinPos.begin(); it != _pinPos.end(); it++)
 	{
 		//if(i != selectedPin) continue;
-		int seed = random(1, 1000);
-		if(seed > 10) continue;
+		int seed = random(1, 100);
+		if(seed > 1) continue;
 		if(maxPerturbation>0)
 		{
 			int newPos = it->second + random(-perturbationRange, perturbationRange);
@@ -224,13 +226,13 @@ void PAsolution::pertubate(int perturbationRange)
 				newPos %= _macroMaxPos[it->first.macroName];
 			}
 			oaString macroName = it->first.macroName;
-			macroPin currentPinPos(macroName, it->second);
+			macroPin originalPinPos(macroName, _originalPinPos[it->first]);
 			macroPin newPinPos(macroName, newPos);
-			assert(_relativePos.find(currentPinPos) != _relativePos.end());
+			assert(_relativePos.find(originalPinPos) != _relativePos.end());
 			assert(_relativePos.find(newPinPos) != _relativePos.end());
-			oaPoint currentPinCenter = _relativePos[currentPinPos];
+			oaPoint originalPinCenter = _relativePos[originalPinPos];
 			oaPoint newPinCenter = _relativePos[newPinPos];
-			int pertubation = abs(newPinCenter.x() - currentPinCenter.x()) + abs(newPinCenter.y() - currentPinCenter.y());
+			int pertubation = abs(newPinCenter.x() - originalPinCenter.x()) + abs(newPinCenter.y() - originalPinCenter.y());
 			if(pertubation <= maxPerturbation)
 			{
 				it->second = newPos;
@@ -260,8 +262,8 @@ void PAsolution::pertubate(int perturbationRange)
 	}
 	for (map<oaInst*, int>::iterator it = _rotation.begin(); it != _rotation.end(); it++) 
 	{
-		int seed = random(0,1000);
-		if(seed>5) continue;
+		int seed = random(0,100);
+		if(seed>10) continue;
 		it->second += random(NOROTATE, ROTATE270);
 		if(_instWidth[it->first]!=_instHeight[it->first]){
 			it->second *= 2;
@@ -351,79 +353,133 @@ void PAsolution::applySolution(oaBlock* topblock)
 
 void PAsolution::legalizePinPos()
 {
-	//int movePitch = (int)ceil((float)minPinPitch / pinMoveStep);
-	//cout<<" = "<<movePitch<<" = "<<endl;
-	for (pinMoveIter it = _pinPos.begin(); it != _pinPos.end(); it++)
+	oaString currentMacroName;
+	std::multimap<macroPin, pinMoveIter> orderPin;
+	for(pinMoveIter it = _pinPos.begin(); ; it++)
 	{
-		oaString currentMacroName = it->first.macroName;
-		int currentPinPos = it->second;
-		int rightNeighborLabel = -1;
-		int rightNeighborPinPos = INT_MAX;
-		int minPinPos = INT_MAX;
-		int minPosPinLabel = -1;
-		bool findMacro = false;
-		//int pinPitch;
-		for (pinMoveIter itt = _pinPos.begin(); itt != _pinPos.end(); itt++)
+		if(it->first.macroName != currentMacroName || it == _pinPos.end())
 		{
-			if (itt->first.macroName != currentMacroName && findMacro) continue;
-			findMacro = true;
-			if (itt->second > currentPinPos)
+			if(!orderPin.empty())
 			{
-				if (itt->second < rightNeighborPinPos)
+				for(std::multimap<macroPin, pinMoveIter>::iterator ref = orderPin.begin(); ref != orderPin.end(); )
 				{
-					rightNeighborPinPos = itt->second;
-					rightNeighborLabel = itt->first.pinLabel;
+					//cout<<itt->first.macroName<<", pin"<<itt->second->first.pinLabel<<", "<<itt->first.pinLabel<<endl;
+					if (ref->first.macroName != currentMacroName)
+					{
+						cout<<"first.macroName: "<<ref->first.macroName<<" currentMacroName: "<<currentMacroName<<endl;
+						assert(ref->first.macroName == currentMacroName);
+					}
+					oaPoint refPoint = _relativePos[ref->first];
+					std::multimap<macroPin, pinMoveIter>::iterator cursor = ref;
+
+					std::multimap<macroPin, pinMoveIter>::iterator tempIt = ref;
+					
+					if(ref != orderPin.begin())
+					{
+						tempIt--;
+						while(tempIt->first.pinLabel >= ref->first.pinLabel && tempIt != orderPin.begin())
+						{
+							cursor--;
+							tempIt--;
+						}
+					}
+
+					//cursor++;
+					if(cursor == orderPin.end()) break;
+					assert(_relativePos.find(cursor->first)!=_relativePos.end());
+					
+					oaPoint currentPoint = _relativePos[cursor->first];
+					//cout<<2<<endl;
+					int dis = abs(currentPoint.x() - refPoint.x()) + abs(currentPoint.y() - refPoint.y());
+
+					std::multimap<macroPin, pinMoveIter>::iterator refNext = ref;
+					refNext++;
+					int refNextlabel = -1;
+					int refNextx = -1;
+					int refNexty = -1;
+					if(refNext != orderPin.end())
+					{
+						refNextlabel = refNext->second->first.pinLabel;
+						refNextx = _relativePos[refNext->first].x();
+						refNexty = _relativePos[refNext->first].y();
+					}
+					//cout<<"refPin: "<<ref->second->first.pinLabel<<" ("<<refPoint.x()<<','<<refPoint.y()<<") currentPin: "<<cursor->second->first.pinLabel<<" ("<<currentPoint.x()<<','<<currentPoint.y()<<") refNext: "<<refNextlabel<<" ("<<refNextx<<','<<refNexty<<')'<<endl;
+					//cout<<"dis: "<<dis<<endl;
+
+					queue<std::multimap<macroPin, pinMoveIter>::iterator> movingPin;
+					queue<int> dists;
+
+					while(dis < minPinPitch)
+					{
+						if(cursor != ref)
+						{
+							movingPin.push(cursor);
+							dists.push(dis);
+						}
+						cursor++;
+						if(cursor == orderPin.end()) break;
+						oaPoint currentPoint = _relativePos[cursor->first];
+						dis = abs(currentPoint.x() - refPoint.x()) + abs(currentPoint.y() - refPoint.y());
+					}
+					//cout<<1<<endl;
+
+					bool firstNewNode = true;
+
+					while(!movingPin.empty())
+					{
+						std::multimap<macroPin, pinMoveIter>::iterator head = movingPin.front();
+						movingPin.pop();
+						int currentDis = dists.front();
+						dists.pop();
+						head->second->second += ceil((float)(minPinPitch - currentDis)/pinMoveStep);
+						if(head->second->second >= _macroMaxPos[head->first.macroName])
+							head->second->second %= _macroMaxPos[head->first.macroName];
+						macroPin newNode(currentMacroName, head->second->second);
+						if(firstNewNode)
+						{
+							firstNewNode = false;
+							refNext = orderPin.insert(std::pair<macroPin, pinMoveIter>(newNode, head->second));
+						}
+						else{
+							orderPin.insert(std::pair<macroPin, pinMoveIter>(newNode, head->second));
+						}
+						orderPin.erase(head);
+					}
+					if(!firstNewNode)
+					{
+						ref = refNext;
+					}
+					else
+					{
+						ref++;
+					}
 				}
+				pinMoveIter temp1 = orderPin.begin()->second;
+				macroPin newFirstPin(currentMacroName, temp1->second);
+				std::multimap<macroPin, pinMoveIter>::iterator temp2 = orderPin.end();
+				temp2--;
+				pinMoveIter temp3 = temp2->second;
+				macroPin newLastPin(currentMacroName, temp3->second);
+				oaPoint p1 = _relativePos[newFirstPin];
+				oaPoint p2 = _relativePos[newLastPin];
+				int checkDis = abs(p1.x() - p2.x()) + abs(p1.y() - p2.y());
+				if(checkDis < minPinPitch)
+				{
+					cout<<"checkDis: "<<checkDis<<" minPinPitch:"<<minPinPitch<<endl;
+					assert(checkDis >= minPinPitch);
+				}
+				orderPin.clear();
 			}
-			if (itt->second < minPinPos)
-			{
-				minPinPos = itt->second;
-				minPosPinLabel = itt->first.pinLabel;
-			}
+			currentMacroName = it->first.macroName;
+			macroPin pinPos(currentMacroName, it->second);
+			orderPin.insert(std::pair<macroPin, pinMoveIter>(pinPos, it));
 		}
-		assert(findMacro);
-		if(rightNeighborPinPos == INT_MAX)
+		else
 		{
-			rightNeighborLabel = minPosPinLabel;
-			rightNeighborPinPos = minPinPos;
+			macroPin pinPos(currentMacroName, it->second);
+			orderPin.insert(std::pair<macroPin, pinMoveIter>(pinPos, it));
 		}
-
-		oaPoint p1, p2;
-		macroPin pinPos1(currentMacroName, it->second);
-		macroPin pinPos2(currentMacroName, rightNeighborPinPos);
-		p1 = _relativePos[pinPos1];
-		p2 = _relativePos[pinPos2];
-		int pinDis = abs(p1.x() - p2.x()) + abs(p1.y() - p2.y());
-		// if(pinDis < minPinPitch)
-		// {
-		// 	cout<<"++++++++++++++++++++++++"<<endl;
-		// 	cout<<currentMacroName<<", "<<it->first.pinLabel<<", "<<rightNeighborLabel<<endl;
-		// 	cout<<"minPinPitch = "<<minPinPitch<<endl;
-		// 	cout<<"pinDis = "<<pinDis<<endl;
-		// 	cout<<"p1: "<<p1.x()<<','<<p1.y()<<"  p2: "<<p2.x()<<','<<p2.y()<<endl;
-		// 	cout<<"p1 pos label: "<<it->second<<"  p2 pos label: "<<rightNeighborPinPos<<endl;
-		// 	cout<<"++++++++++++++++++++++++"<<endl;
-		// 	it->second -= ceil((minPinPitch - pinDis)/pinMoveStep);
-		// }
-		if(it->second < 0)
-		{
-			it->second += _macroMaxPos[currentMacroName];
-		}
-
-		// if (rightNeighborPinPos == INT_MAX)
-		// {
-		// 	pinPitch = minPinPos;
-		// }
-		// else
-		// {
-		// 	pinPitch = rightNeighborPinPos - currentPinPos;
-		// }
-		// if (pinPitch < movePitch) {
-		// 	it->second -= (movePitch - pinPitch);
-		// 	if (it->second < 0) {
-		// 		it->second += _macroMaxPos[it->first.macroName];
-		// 	}
-		// }
+		if(it == _pinPos.end()) break;
 	}
 }
 
@@ -432,7 +488,12 @@ float PAsolution::evaluate(oaBlock* block)
 	oaIter<oaNet> netIter(block->getNets());
 	int maxWirelength = 0;
 	int totalWirelength = 0;
+	oaSigType power("power");
+	oaSigType ground("ground");
 	while (oaNet* net = netIter.getNext()){
+		oaSigType sigType = net->getSigType();
+		if(sigType == power || sigType == ground) 
+			continue;
 		int netLength = getHPWL(net);
 		if(netLength > maxWirelength)
 		{
@@ -457,6 +518,45 @@ float PAsolution::evaluate(oaBlock* block)
 	}
 	avgPinPerturbation /= pinNum;
 
+	cout<<maxWirelength<<", "<<totalWirelength<<", "<<avgPinPerturbation<<endl;
+
 	return alpha*maxWirelength + beta*totalWirelength + gamma*avgPinPerturbation;
 
+}
+
+void PAsolution::printStaticData()
+{
+	cout<<"==============="<<endl;
+	cout<<"static data:"<<endl;
+	cout<<"pinWidth: "<<pinWidth<<endl;
+	cout<<"pinHeight: "<<pinHeight<<endl;
+	cout<<"alpha: "<<alpha<<endl;
+	cout<<"beta: "<<beta<<endl;
+	cout<<"gamma: "<<gamma<<endl;
+	cout<<"pinMoveStep: "<<pinMoveStep<<endl;
+	cout<<"minPinPitch: "<<minPinPitch<<endl;
+	cout<<"maxPerturbation: "<<maxPerturbation<<endl;
+	cout<<"==============="<<endl;
+}
+
+bool PAsolution::checkPerturbation()
+{
+	if(maxPerturbation <= 0)
+		return true;
+	for (pinMoveIter it = _pinPos.begin(); it != _pinPos.end(); it++)
+	{
+		oaString macroName = it->first.macroName;
+		macroPin originalPinPos(macroName, _originalPinPos[it->first]);
+		macroPin newPinPos(macroName, it->second);
+		assert(_relativePos.find(originalPinPos) != _relativePos.end());
+		assert(_relativePos.find(newPinPos) != _relativePos.end());
+		oaPoint originalPinCenter = _relativePos[originalPinPos];
+		oaPoint newPinCenter = _relativePos[newPinPos];
+		int pertubation = abs(newPinCenter.x() - originalPinCenter.x()) + abs(newPinCenter.y() - originalPinCenter.y());
+		if(pertubation > maxPerturbation)
+		{
+			return false;
+		}		
+	}
+	return true;
 }

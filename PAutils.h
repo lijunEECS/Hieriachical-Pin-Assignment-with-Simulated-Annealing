@@ -77,7 +77,7 @@ void printDataForMatlab(oaBlock* topBlock, const char* filename);
 
 int onWhichEdge(oaInst* inst, oaPin* pin);
 
-void printPinDict(pinDict& dict);
+void printPinDict(pinDict& dict, const char* filename);
 
 void getPinBBox(oaPin* pin, oaBox& bbox);
 

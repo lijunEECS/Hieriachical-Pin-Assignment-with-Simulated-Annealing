@@ -4,6 +4,8 @@
 #include <string>
 #include <map>
 #include <set>
+#include <vector>
+#include <queue>
 #include <math.h>
 #include <climits>
 #include "oaDesignDB.h"
@@ -29,6 +31,7 @@ public:
 	PAsolution(PAsolution& _ps1, PAsolution& _ps2);
 	virtual ~PAsolution();
 	void printSolution();
+	static void printStaticData();
 	void pertubate(int perturbationRange);
 	void legalizePinPos();               
 	static void initializeStaticMember(oaBlock* topblock, pinDict& dict, ProjectInputRules& rules, oaNativeNS _ns);
@@ -61,6 +64,7 @@ public:
 	std::map<macroPin, int> _pinPos;
 	std::map<oaInst*, int> _rotation;
 	void applySolution(oaBlock* topblock);
+	bool checkPerturbation();
 	float evaluate(oaBlock* block);
 private:
 };

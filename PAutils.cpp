@@ -76,7 +76,7 @@ macroPin getMacroPin(oaPin* pin, oaInst* inst, pinDict& dict)
 	//assert(dict.find(_instPin) != dict.end());
 	if (dict.find(_instPin) == dict.end())
 	{
-		printPinDict(dict);
+		//printPinDict(dict);
 		oaBox bbox;
 		oaIter<oaPinFig> pinFigIter(pin->getFigs());
 		oaPinFig* pinFig = pinFigIter.getNext();
@@ -147,8 +147,8 @@ void rotate270(oaInst* inst)
 int getHPWL(oaNet* net) {
 	int termNum = (net->getTerms()).getCount();
 	int instTermNum = (net->getInstTerms()).getCount();
-	int maxX = 0;
-	int maxY = 0;
+	int maxX = INT_MIN;
+	int maxY = INT_MIN;
 	int minX = INT_MAX;
 	int minY = INT_MAX;
 	oaPoint tempPoint;
@@ -391,8 +391,9 @@ void buildPinDict(oaBlock* block, pinDict& dict)
 	}
 }
 
-void printPinDict(pinDict& dict)
+void printPinDict(pinDict& dict, const char* filename)
 {
+	fstream out(filename, ios::out);
 	cout << "=============================================" << endl;
 	cout << "Pin dictionary:" << endl;
 	for (pinDictIter it = dict.begin(); it != dict.end(); it++)
@@ -401,8 +402,13 @@ void printPinDict(pinDict& dict)
 		oaIter<oaPinFig> pinFigIter(it->first.pin->getFigs());
 		oaPinFig* pinFig = pinFigIter.getNext();
 		pinFig->getBBox(bbox);
-		cout << it->first.instName << ", " <<it->first.pinName<<", "<< "pin" << it->second << ", " << bbox.left() << ", " << bbox.right() << ", " << bbox.top() << ", " << bbox.bottom() << endl;
+		oaString termName;
+		it->first.pin->getTerm()->getName(_ns, termName);
+		cout << it->first.instName << ", " <<termName<<", "<<it->first.pinName<<", "<< "pin" << it->second << ", " << bbox.left() << ", " << bbox.right() << ", " << bbox.top() << ", " << bbox.bottom() << endl;
+		out<<bbox.left() << ", " << bbox.right() << ", " << bbox.top() << ", " << bbox.bottom() << endl;
 	}
+	cout << "=============================================" << endl;
+	out.close();
 }
 
 int onWhichEdge(oaInst* inst, oaPin* pin)

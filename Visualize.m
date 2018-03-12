@@ -1,9 +1,10 @@
 clc;
 clear;
 close;
-filename = "PAdata_1.txt";
+filename = "PAdata_golden.txt";
 
 cells = load(filename);
+pinPos = load("PApinPos.txt");
 
 [cellNum,~] = size(cells);
 cellNum = cellNum-1;
@@ -27,6 +28,12 @@ cells_rsp=cells;
 cells_rsp(:,2)=cells(:,4);
 cells_rsp(:,3)=cells(:,2)-cells(:,1);
 cells_rsp(:,4)=cells(:,3)-cells(:,4);
+
+centerX = (pinPos(:,1)+pinPos(:,2))/2;
+centerY = (pinPos(:,3)+pinPos(:,4))/2;
+center = [centerX centerY];
+resX = mod(centerX - 170, 560);
+resY = mod(centerY - 140, 560);
 
 for ii=1:cellNum
     if cells_rsp(ii,5)==1
