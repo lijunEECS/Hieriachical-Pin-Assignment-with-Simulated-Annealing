@@ -16,10 +16,12 @@ instPin::instPin(oaInst* _inst, oaPin* _pin)
 	_pin->getName(pinName);
 }
 
-/* The struct macroPin is used to index pin location
+/* The struct macroPin is used to index pin location.
 *  For hierarchical pin assignment, pin location should
 *  only depend on the macro name and pin label.
-*  Overload < so that macroPin can be used as key for STL map
+*  Overload < so that macroPin can be stored by balance binary tree.
+*  Notice that in practice, the pin label field can be either used 
+*  to store a pin label or a index of legal position.
 */
 bool operator < (const macroPin& _l, const macroPin& _r)
 {
@@ -68,27 +70,29 @@ oaString getMacroName(oaInst* inst) {
 	return macroName;
 }
 
-
+/* This function fetch a pin and an inst, then cast a corresponding
+   macroPin object to return. 
+*/
 macroPin getMacroPin(oaPin* pin, oaInst* inst, pinDict& dict)
 {
 	oaString macroName = getMacroName(inst);
 	instPin _instPin(inst, pin);
-	//assert(dict.find(_instPin) != dict.end());
-	if (dict.find(_instPin) == dict.end())
-	{
+	assert(dict.find(_instPin) != dict.end());
+	//if (dict.find(_instPin) == dict.end())
+	//{
 		//printPinDict(dict);
-		oaBox bbox;
-		oaIter<oaPinFig> pinFigIter(pin->getFigs());
-		oaPinFig* pinFig = pinFigIter.getNext();
-		pinFig->getBBox(bbox);
-		oaString masterCellName, pinName;
-		inst->getMaster()->getCellName(_ns, masterCellName);
-		pin->getName(pinName);
-		cout << "=========================================" << endl;
-		cout<< masterCellName<<", "<<pinName<<", "<< bbox.left() << ", " << bbox.right() << ", " << bbox.top() << ", " << bbox.bottom() << endl;
-		cout << "=========================================" << endl;
-		assert(dict.find(_instPin) != dict.end());
-	}
+		// oaBox bbox;
+		// oaIter<oaPinFig> pinFigIter(pin->getFigs());
+		// oaPinFig* pinFig = pinFigIter.getNext();
+		// pinFig->getBBox(bbox);
+		// oaString masterCellName, pinName;
+		// inst->getMaster()->getCellName(_ns, masterCellName);
+		// pin->getName(pinName);
+		// cout << "=========================================" << endl;
+		// cout<< masterCellName<<", "<<pinName<<", "<< bbox.left() << ", " << bbox.right() << ", " << bbox.top() << ", " << bbox.bottom() << endl;
+		// cout << "=========================================" << endl;
+	// 	assert(dict.find(_instPin) != dict.end());
+	// }
 	int pinLabel = dict[_instPin];
 	return macroPin(macroName, pinLabel);
 }
@@ -297,6 +301,11 @@ void printDataForMatlab(oaBlock* topBlock, const char* filename)
 	out.close();
 }
 
+
+/* a pin dictionary is a map from instPin (which contains
+   basically an oaInst* and a pin*) to the pin's label.
+   Use this data structure to find the pin label fleetly.
+*/
 void buildPinDict(oaBlock* block, pinDict& dict)
 {
 	assert(dict.empty());
@@ -323,16 +332,16 @@ void buildPinDict(oaBlock* block, pinDict& dict)
 					pair<instPin, int> tempP;
 					tempP = make_pair(instPin(inst,pin), tempLabel);
 					pair<pinDictIter, bool> probe = dict.insert(tempP);
-					if (!probe.second)
-					{
-						oaString masterCellName;
-						inst->getMaster()->getCellName(_ns, masterCellName);
-						cout << "==============================================" << endl;
-						cout << "pinDict building error." << endl;
-						cout << masterCellName << endl;
-						cout << tempLabel << ", " << dict[instPin(inst, pin)] << endl;
-						cout << "==============================================" << endl;
-					}
+					// if (!probe.second)
+					// {
+					// 	oaString masterCellName;
+					// 	inst->getMaster()->getCellName(_ns, masterCellName);
+					// 	cout << "==============================================" << endl;
+					// 	cout << "pinDict building error." << endl;
+					// 	cout << masterCellName << endl;
+					// 	cout << tempLabel << ", " << dict[instPin(inst, pin)] << endl;
+					// 	cout << "==============================================" << endl;
+					// }
 					assert(probe.second);
 					tempLabel++;
 				}
@@ -368,19 +377,19 @@ void buildPinDict(oaBlock* block, pinDict& dict)
 							pair<instPin, int> tempP;
 							tempP = make_pair(instPin(inst,pin), tempLabel);
 							pair<pinDictIter, bool> probe = dict.insert(tempP);
-							if (!probe.second)
-							{
-								oaString masterCellName, masterCellName2;
-								it->first.inst->getMaster()->getCellName(_ns, masterCellName2);
-								inst->getMaster()->getCellName(_ns, masterCellName);
-								cout << "==============================================" << endl;
-								cout << "pinDict building error." << endl;
-								cout << masterCellName <<", "<<masterCellName2<< endl;
-								cout << pinBBox1.left() << ", " << pinBBox1.right() << ", " << pinBBox1.top() << ", " << pinBBox1.bottom() << endl;
-								cout << pinBBox2.left() << ", " << pinBBox2.right() << ", " << pinBBox2.top() << ", " << pinBBox2.bottom() << endl;
-								cout << tempLabel << ", " << dict[instPin(inst,pin)] << endl;
-								cout << "==============================================" << endl;
-							}
+							// if (!probe.second)
+							// {
+							// 	oaString masterCellName, masterCellName2;
+							// 	it->first.inst->getMaster()->getCellName(_ns, masterCellName2);
+							// 	inst->getMaster()->getCellName(_ns, masterCellName);
+							// 	cout << "==============================================" << endl;
+							// 	cout << "pinDict building error." << endl;
+							// 	cout << masterCellName <<", "<<masterCellName2<< endl;
+							// 	cout << pinBBox1.left() << ", " << pinBBox1.right() << ", " << pinBBox1.top() << ", " << pinBBox1.bottom() << endl;
+							// 	cout << pinBBox2.left() << ", " << pinBBox2.right() << ", " << pinBBox2.top() << ", " << pinBBox2.bottom() << endl;
+							// 	cout << tempLabel << ", " << dict[instPin(inst,pin)] << endl;
+							// 	cout << "==============================================" << endl;
+							// }
 							assert(probe.second);
 							break;
 						}
@@ -391,6 +400,9 @@ void buildPinDict(oaBlock* block, pinDict& dict)
 	}
 }
 
+/* This function print out the content of the pin dictionary
+   to a txt file. The file name is specified by filename parameter.
+*/
 void printPinDict(pinDict& dict, const char* filename)
 {
 	fstream out(filename, ios::out);
@@ -411,6 +423,10 @@ void printPinDict(pinDict& dict, const char* filename)
 	out.close();
 }
 
+
+/* Given a pin and its owner inst, this function return an integer,
+   indicating on which edge this pin is.
+*/
 int onWhichEdge(oaInst* inst, oaPin* pin)
 {
 	oaBox instBBox;
@@ -445,6 +461,8 @@ int onWhichEdge(oaInst* inst, oaPin* pin)
 	return -1;
 }
 
+/* Function write the bounding box of the given pin into bbox.
+*/
 void getPinBBox(oaPin* pin, oaBox& bbox)
 {
 	oaIter<oaPinFig> pinFigIter(pin->getFigs());

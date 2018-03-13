@@ -7,10 +7,9 @@
 #include "InputOutputHandler.h"
 #include "ProjectInputRules.h"
 #include "OAHelper.h"
-#include "designChecker.h"
 #include "PAutils.h"
 #include "PAsolution.h"
-#include "SAassigner.h"
+
 
 using namespace oa;
 using namespace std;
@@ -89,193 +88,94 @@ int main(int argc, char *argv[])
 	oaString netName, instName, masterCellName, assocTermName, termName;
 #define test false
 #if test
-
-	/*oaIter<oaInst> instIter(block->getInsts());
-	while (oaInst* inst = instIter.getNext())
-	{
-		oaDesign* master = inst->getMaster();
-		master->getCellName(ns, masterCellName);
-		oaBox bbox;
-		inst->getBBox(bbox);
-		oaPoint origin;
-		inst->getOrigin(origin);
-		cout << masterCellName << ", " << inst->getOrient().getName() << ", " << bbox.left() << ", " << bbox.right() << ", " << bbox.top() << ", " << bbox.bottom() << endl;
-		cout << origin.x() << ", " << origin.y() << endl;
-	}*/
-
-	// 100000 iterations take 610ms
 	printDataForMatlab(block, "PAdata_golden.txt");
 	pinDict globalDict;
 	buildPinDict(block, globalDict);
-	cout << "=================inital==========================" << endl;
-	printPinDict(globalDict,"goldenPinPos.txt");
+	printPinDict(globalDict, "goldenDict.txt");
 	PAsolution dummySolution;
-	//cout<<0<<endl;
 	dummySolution.initializeStaticMember(block, globalDict, inputRules, ns);
-	//cout<<1<<endl;
 	PAsolution::printStaticData();
-	// cout << "==relativePos==" << endl;
-	// for(map<macroPin, oaPoint>::iterator it = PAsolution::_relativePos.begin(); it != PAsolution::_relativePos.end();it++)
-	// {
-	// 	cout<<it->second.x()<<", "<<it->second.y()<<endl;
-	// }
-	// cout<<"=============="<<endl;
-	//cout<<2<<endl;
 	PAsolution initialSolution(block);
-	//cout<<3<<endl;
 	PAsolution::_originalPinPos = initialSolution._pinPos;
-	//cout<<4<<endl;
+
+	cout<<"=========inital solution========="<<endl;
 	initialSolution.printSolution();
+    cout<<"================================="<<endl;
 
-	// float e1 = initialSolution.evaluate(block);
-	// initialSolution.printSolution();
-	// initialSolution.legalizePinPos();
-	// initialSolution.printSolution();
-	// float e2 = initialSolution.evaluate(block);
-	// cout<<e1<<endl;
-	// cout<<e2<<endl;
+	double currentEnergy = initialSolution.evaluate(block);
+	double tempEnergy;
+    //adjust orientations
 
-	// PAsolution tempSolution(initialSolution);
-	// tempSolution.pertubate(100);
-	// tempSolution.legalizePinPos();
-	// tempSolution.printSolution();
-	// tempSolution.applySolution(block);
+    int invalidIterNum = 0;
 
-	// oaIter<oaNet> netIter(block->getNets());
-	// while(oaNet* net = netIter.getNext())
-	// {
-	// 	oaIter<oaInstTerm> instTermIter(net->getInstTerms());
-	// 	oaString netName;
-	// 	net->getName(ns, netName);
-	// 	cout<<netName<<": ";
-	// 	while(oaInstTerm* instTerm = instTermIter.getNext())
-	// 	{
-	// 		oaTerm* assocTerm = instTerm->getTerm();
-	// 		oaIter<oaPin> pinIter(assocTerm->getPins());
-	// 		oaIter<oaPinFig> pinFigIter(pinIter.getNext()->getFigs());
-	// 		oaBox pinBBox;
-	// 		pinFigIter.getNext()->getBBox(pinBBox);
-	// 		oaPoint pinCenter;
-	// 		pinBBox.getCenter(pinCenter);
-	// 		cout<<'('<<pinCenter.x()<<','<<pinCenter.y()<<')';
-	// 	}
-	// 	cout<<endl;
-	// }
+    cout<<"=========Rotation begin=========="<<endl;
+    for(int i = 0; i < 300; i++)
+    {
+    	if(invalidIterNum >= 50) break;
+    	PAsolution tempSolution(initialSolution);
+    	tempSolution.randomRotate();
+    	tempSolution.applySolution(block);
+    	tempEnergy = tempSolution.evaluate(block);
+    	if(tempEnergy < currentEnergy)
+    	{
+    		cout<<i<<", "<<tempEnergy<<", "<<currentEnergy<<endl;
+    		currentEnergy = tempEnergy;
+    		invalidIterNum = 0;
+    	}
+    	else
+    	{
+    		invalidIterNum++;
+    		PAsolution recoverSolution(initialSolution, tempSolution);
+    		recoverSolution.applySolution(block);
+    	}
+    }
+    cout<<"=========Rotation end=========="<<endl;
 
-	// printDataForMatlab(block,"PAdata_1.txt");
-	// PAsolution inverseSolution(initialSolution,tempSolution);
-	// //evaluate
-	// inverseSolution.applySolution(block);
-	// inverseSolution.printSolution();
 
-	cout<<"============instBBox==========="<<endl;
-	oaIter<oaInst> instIter(block->getInsts());
-	while(oaInst* inst = instIter.getNext())
-	{
-		oaString masterCellName;
-		inst->getMaster()->getCellName(ns, masterCellName);
-		oaBox instBBox;
-		inst->getBBox(instBBox);
-		oaPoint origin;
-		inst->getOrigin(origin);
-		cout<<masterCellName<<", "<<instBBox.left()<<", "<<instBBox.right()<<", "<<instBBox.top()<<", "<<instBBox.bottom()<<endl;
-		cout<<"Origin: "<<origin.x()<<','<<origin.y()<<endl;
-	}
-	cout<<"================================"<<endl;
-	
-	clock_t startTime, endTime;
 	int pertubateRange = (PAsolution::maxPerturbation / PAsolution::pinMoveStep)/2;
-	startTime = clock();
-	float currentEnergy = initialSolution.evaluate(block);
-	for (int i = 0; i < 2000; i++) {
+
+	invalidIterNum = 0;
+	for (int i = 0; i < 800; i++) {
+		if(invalidIterNum >= 100) break;
 		PAsolution tempSolution(initialSolution);
 		tempSolution.pertubate(pertubateRange);
 		//tempSolution.printSolution();
-		tempSolution.legalizePinPos();
+		//cout<<"legalizePinPos"<<endl;
+		bool tryLegalize = tempSolution.legalizePinPos();
 		//tempSolution.printSolution();
-		if(!tempSolution.checkPerturbation()) continue;
+		if(!tryLegalize || !tempSolution.checkPerturbation()) continue;
 		tempSolution.applySolution(block);
 		float tempEnergy = tempSolution.evaluate(block);
-		//float deltaEnergy = 0.1*tempEnergy;
-		cout << i << "th iteration, tempEnergy: "<<tempEnergy<<", currentEnergy: "<<currentEnergy<<endl;
 		if(tempEnergy < currentEnergy)
 		{
-			cout <<"Improved"<<endl;
-			//cout << i << "th iteration, tempEnergy: "<<tempEnergy<<", currentEnergy: "<<currentEnergy<<endl;
+			invalidIterNum = 0;
+			cout<<"Improved!"<<endl;
+			cout << i << "th iteration, tempEnergy: "<<tempEnergy<<", currentEnergy: "<<currentEnergy<<endl;
 			initialSolution = tempSolution;
 			currentEnergy = tempEnergy;
 		}
 		else
 		{
-			// int seed = random(0,100);
-			// double gate = 1/(1+exp((tempEnergy - currentEnergy)/(i*deltaEnergy)));
-			// if(seed < -1)
+			// double seed = rand() /double(RAND_MAX);
+			// double gate = exp(-(tempEnergy - currentEnergy)/i);
+			// if(seed<gate)
 			// {
-			// 	//cout<<"Drawback"<<endl;
-			// 	//cout << i << "th iteration, tempEnergy: "<<tempEnergy<<", currentEnergy: "<<currentEnergy<<endl;
+			// 	cout<<"Degenerated."<<endl;
+			// 	cout << i << "th iteration, tempEnergy: "<<tempEnergy<<", currentEnergy: "<<currentEnergy<<endl;
 			// 	initialSolution = tempSolution;
 			// 	currentEnergy = tempEnergy;
 			// }
-			// else
-			// {
-				PAsolution inverseSolution(initialSolution,tempSolution);
-				inverseSolution.applySolution(block);
-			//}
+			invalidIterNum++;
+			initialSolution.applySolution(block);
 		}
 	}
-	endTime = clock();
-	cout<<"============instBBox==========="<<endl;
-	instIter.reset();
-	while(oaInst* inst = instIter.getNext())
-	{
-		oaString masterCellName;
-		inst->getMaster()->getCellName(ns, masterCellName);
-		oaBox instBBox;
-		inst->getBBox(instBBox);
-		oaPoint origin;
-		inst->getOrigin(origin);
-		cout<<masterCellName<<", "<<instBBox.left()<<", "<<instBBox.right()<<", "<<instBBox.top()<<", "<<instBBox.bottom()<<endl;
-		cout<<"Origin: "<<origin.x()<<','<<origin.y()<<endl;
-	}
-	cout<<"================================"<<endl;
-	initialSolution.printSolution();
-	printPinDict(globalDict,"PApinPos.txt");
-	printDataForMatlab(block, "PAdata_1.txt");
-	cout << "Duration: " << double(endTime - startTime) / CLOCKS_PER_SEC * 1000 << "ms." << endl;
 
-	/*printDataForMatlab(block, "PAdata_golden.txt");
-	pinDict globalDict;
-	buildPinDict(block, globalDict);
-	printPinDict(globalDict);
-	PAsolution dummySolution;
-	dummySolution.initializeStaticMember(block, globalDict, inputRules, ns);
-	PAsolution initialSolution(block);
+	cout<<"========final solution========="<<endl;
 	initialSolution.printSolution();
-	cout << 1 << endl;
-	PAsolution perturbatedSolution(initialSolution);
-	perturbatedSolution.pertubate(100);
-	perturbatedSolution.printSolution();
-	cout << 2 << endl;
-	SAassigner assigner(perturbatedSolution, inputRules, globalDict, ns);
-	cout << 3 << endl;
-	perturbatedSolution.applySolution(block);
-	cout << 4 << endl;
-	printDataForMatlab(block, "PAdata.txt");
-	printPinDict(globalDict);*/
-
+	printPinDict(globalDict, "finalDict.txt");
 #else
 
-	//=====================================================================
 #endif
-	//=====================================================================
-	//check legality of pin assginment
-	//=====================================================================
-	//  check if hierarchical pin assginment is obtained
-	// bool hierarchicalPA = designChecker::checkHierarchicalAssignment(design);
-	// if (hierarchicalPA) { cout << "Hierarchical pin assignment obtained." << endl; }
-	// else { cout << "Pin assignment is not hierarchical." << endl; }
-
-	//Save the improved version of the design
 	InputOutputHandler::SaveAndCloseAllDesigns(designInfo, design, block);
 
 	if (lib)

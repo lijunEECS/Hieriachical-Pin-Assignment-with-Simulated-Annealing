@@ -3,6 +3,10 @@
 #include <iostream>
 using namespace std;
 
+
+/* This function initialize the static data member of PAsolution class.
+   The meaning of each static member is commented in the header file.
+*/
 void PAsolution::initializeStaticMember(oaBlock* topblock, pinDict& dict, ProjectInputRules& rules, oaNativeNS _ns)
 {
 	ns = _ns;
@@ -146,6 +150,9 @@ void PAsolution::initializeStaticMember(oaBlock* topblock, pinDict& dict, Projec
     gamma = 2.0 * totalWirelengthWithoutPA / avgHalfInstPerimeter;
 }
 
+
+// This constructor extract the pin position label from topblock 
+// and initialize _rotation as all NOROTATE
 PAsolution::PAsolution(oaBlock* topblock)
 {
 	oaIter<oaInst> instIter(topblock->getInsts());
@@ -189,12 +196,17 @@ PAsolution::PAsolution(oaBlock* topblock)
 	}
 }
 
+
+// This is a copy constructor. It copy the only two essential data member --
+// _pinPos and _rotation.
 PAsolution::PAsolution(PAsolution& _ps)
 {
 	_pinPos = _ps._pinPos;
 	_rotation = _ps._rotation;
 }
 
+// This constructor copys the _pinPos from _ps1 and the inverse rotation from _ps2.
+// We use it to recover the design from some applied solution.
 PAsolution::PAsolution(PAsolution& _ps1, PAsolution& _ps2)
 {
 	_pinPos = _ps1._pinPos;
@@ -204,16 +216,18 @@ PAsolution::PAsolution(PAsolution& _ps1, PAsolution& _ps2)
 	}
 }
 
+
+// This function pertubate current solution slightly, which potentially may generate
+// a better solution.
 void PAsolution::pertubate(int perturbationRange)
 {
 	int pinNum = _pinPos.size();
-	int selectedPin = random(0, pinNum-1);
-	int i = 0;
+	pinNum = min(75, pinNum);
+	double gate = 1.0/pinNum;
 	for (pinMoveIter it = _pinPos.begin(); it != _pinPos.end(); it++)
 	{
-		//if(i != selectedPin) continue;
-		int seed = random(1, 100);
-		if(seed > 1) continue;
+		double seed = rand() /double(RAND_MAX);
+		if(seed > gate) continue;
 		if(maxPerturbation>0)
 		{
 			int newPos = it->second + random(-perturbationRange, perturbationRange);
@@ -250,27 +264,26 @@ void PAsolution::pertubate(int perturbationRange)
 				it->second %= _macroMaxPos[it->first.macroName];
 			}
 		}
-		/*if (_macroMaxPos[it->first.macroName] <= 0)
-		{
-			cout << "****************************" << endl;
-			cout << it->first.macroName << ", " << _macroMaxPos[it->first.macroName] << endl;
-			cout << "****************************" << endl;
-			assert(_macroMaxPos[it->first.macroName] > 0);
-		}
-		it->second %= _macroMaxPos[it->first.macroName];*/
-		
 	}
-	for (map<oaInst*, int>::iterator it = _rotation.begin(); it != _rotation.end(); it++) 
+}
+
+void PAsolution::randomRotate()
+{
+	int instNum = _rotation.size();
+	instNum = min(10, instNum);
+	double gate = 1.0/instNum;
+	for(std::map<oaInst*, int>::iterator it = _rotation.begin(); it != _rotation.end(); it++)
 	{
-		int seed = random(0,100);
-		if(seed>10) continue;
-		it->second += random(NOROTATE, ROTATE270);
-		if(_instWidth[it->first]!=_instHeight[it->first]){
-			it->second *= 2;
-		}
-		if (it->second > ROTATE270)
+		double seed = rand() /double(RAND_MAX);
+		if(seed > gate) continue;
+		it->second = random(NOROTATE, ROTATE270);
+		if(_instWidth[it->first] != _instHeight[it->first])
 		{
-			it->second %= (ROTATE270 + 1);
+			it->second *= 2;
+			if(it->second > ROTATE270)
+			{
+				it->second %= (ROTATE270+1);
+			}
 		}
 	}
 }
@@ -283,6 +296,8 @@ PAsolution::~PAsolution()
 {
 }
 
+
+// This function print the solution to console.
 void PAsolution::printSolution()
 {
 	cout << "=============================================" << endl;
@@ -306,6 +321,7 @@ void PAsolution::printSolution()
 	cout << "=============================================" << endl;
 }
 
+// This function apply the solution to the topblock by moving pins and rotating insts.
 void PAsolution::applySolution(oaBlock* topblock)
 {
 	oaIter<oaInst> instIter(topblock->getInsts());
@@ -351,19 +367,29 @@ void PAsolution::applySolution(oaBlock* topblock)
 	}
 }
 
-void PAsolution::legalizePinPos()
+
+// The perturbated solution may violate pin pitch constraint. This function legalize
+// perturbated solution so that pin pitch constraint is honored for sure.
+// Notice that the legalization process may introduce pin perturbation violation.
+// Must check if pin perturbation constraint is satisfied after legalization.
+bool PAsolution::legalizePinPos()
 {
+	//cout<<"abd"<<endl;
+	cout<<_pinPos.size()<<endl;
 	oaString currentMacroName;
 	std::multimap<macroPin, pinMoveIter> orderPin;
-	for(pinMoveIter it = _pinPos.begin(); ; it++)
+	bool stop = false;
+	for(pinMoveIter it = _pinPos.begin(); !stop ; it++)
 	{
-		if(it->first.macroName != currentMacroName || it == _pinPos.end())
+		if(it == _pinPos.end()) stop = true;
+		if(it == _pinPos.end() || it->first.macroName != currentMacroName)
 		{
+			//cout<<"dog"<<endl;
 			if(!orderPin.empty())
 			{
+				cout<<"pig"<<endl;
 				for(std::multimap<macroPin, pinMoveIter>::iterator ref = orderPin.begin(); ref != orderPin.end(); )
 				{
-					//cout<<itt->first.macroName<<", pin"<<itt->second->first.pinLabel<<", "<<itt->first.pinLabel<<endl;
 					if (ref->first.macroName != currentMacroName)
 					{
 						cout<<"first.macroName: "<<ref->first.macroName<<" currentMacroName: "<<currentMacroName<<endl;
@@ -383,13 +409,10 @@ void PAsolution::legalizePinPos()
 							tempIt--;
 						}
 					}
-
-					//cursor++;
 					if(cursor == orderPin.end()) break;
 					assert(_relativePos.find(cursor->first)!=_relativePos.end());
 					
 					oaPoint currentPoint = _relativePos[cursor->first];
-					//cout<<2<<endl;
 					int dis = abs(currentPoint.x() - refPoint.x()) + abs(currentPoint.y() - refPoint.y());
 
 					std::multimap<macroPin, pinMoveIter>::iterator refNext = ref;
@@ -403,9 +426,6 @@ void PAsolution::legalizePinPos()
 						refNextx = _relativePos[refNext->first].x();
 						refNexty = _relativePos[refNext->first].y();
 					}
-					//cout<<"refPin: "<<ref->second->first.pinLabel<<" ("<<refPoint.x()<<','<<refPoint.y()<<") currentPin: "<<cursor->second->first.pinLabel<<" ("<<currentPoint.x()<<','<<currentPoint.y()<<") refNext: "<<refNextlabel<<" ("<<refNextx<<','<<refNexty<<')'<<endl;
-					//cout<<"dis: "<<dis<<endl;
-
 					queue<std::multimap<macroPin, pinMoveIter>::iterator> movingPin;
 					queue<int> dists;
 
@@ -421,7 +441,6 @@ void PAsolution::legalizePinPos()
 						oaPoint currentPoint = _relativePos[cursor->first];
 						dis = abs(currentPoint.x() - refPoint.x()) + abs(currentPoint.y() - refPoint.y());
 					}
-					//cout<<1<<endl;
 
 					bool firstNewNode = true;
 
@@ -465,24 +484,35 @@ void PAsolution::legalizePinPos()
 				int checkDis = abs(p1.x() - p2.x()) + abs(p1.y() - p2.y());
 				if(checkDis < minPinPitch)
 				{
-					cout<<"checkDis: "<<checkDis<<" minPinPitch:"<<minPinPitch<<endl;
-					assert(checkDis >= minPinPitch);
+					return false;
 				}
 				orderPin.clear();
 			}
-			currentMacroName = it->first.macroName;
-			macroPin pinPos(currentMacroName, it->second);
-			orderPin.insert(std::pair<macroPin, pinMoveIter>(pinPos, it));
+			if(!stop){
+				currentMacroName = it->first.macroName;
+				macroPin pinPos(currentMacroName, it->second);
+				orderPin.insert(std::pair<macroPin, pinMoveIter>(pinPos, it));
+			}
 		}
 		else
 		{
+			//cout<<"cat"<<endl;
 			macroPin pinPos(currentMacroName, it->second);
 			orderPin.insert(std::pair<macroPin, pinMoveIter>(pinPos, it));
 		}
 		if(it == _pinPos.end()) break;
 	}
+	return true;
 }
 
+
+// This function evaluate current solution.
+// As described in header file, the metric is estimated as 7 - X +3 * e, 
+// where e is related to runtime and
+// X = alpha * maxWireLength + beta * totalWireLength + gamma * avgPinPerturbation
+// This function fetch the topblock, find out the max wire length, total wire length
+// and avg pin perturbation the return X.
+// The bigger X is, the worse the solution is considered as.
 float PAsolution::evaluate(oaBlock* block)
 {
 	oaIter<oaNet> netIter(block->getNets());
@@ -518,12 +548,13 @@ float PAsolution::evaluate(oaBlock* block)
 	}
 	avgPinPerturbation /= pinNum;
 
-	cout<<maxWirelength<<", "<<totalWirelength<<", "<<avgPinPerturbation<<endl;
+	//cout<<maxWirelength<<", "<<totalWirelength<<", "<<avgPinPerturbation<<endl;
 
 	return alpha*maxWirelength + beta*totalWirelength + gamma*avgPinPerturbation;
 
 }
 
+// This function print out some static data to console.
 void PAsolution::printStaticData()
 {
 	cout<<"==============="<<endl;
@@ -539,6 +570,8 @@ void PAsolution::printStaticData()
 	cout<<"==============="<<endl;
 }
 
+// This function check if current solution honors the max pin perturbation 
+// constraint.
 bool PAsolution::checkPerturbation()
 {
 	if(maxPerturbation <= 0)
